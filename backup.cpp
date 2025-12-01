@@ -279,12 +279,12 @@ public:
 
 };
 
-int main()
-{
-    Player player;
-    player.read_from_file("songs_set.csv");
-    player.calculate_similarity_of_all_songs();
-    player.print();
-
-    // player.print_playlist_by_artist();
-}
+//int main()
+//{
+//    Player player;
+//    player.read_from_file("songs_set.csv");
+//    player.calculate_similarity_of_all_songs();
+//    player.print();
+//
+//    // player.print_playlist_by_artist();
+//}
