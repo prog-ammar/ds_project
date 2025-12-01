@@ -1,5 +1,7 @@
 #include <iostream>
 #include <TGUI/TGUI.hpp>
+#include<TGUI/AllWidgets.hpp>
+#include<TGUI/Widget.hpp>
 #include <TGUI/Backend/SFML-Graphics.hpp>
 #include <SFML/Window.hpp>
 
@@ -25,8 +27,8 @@ public:
         button->setPosition(pos_x, pos_y);
         button->setSize(width, height);
         button->getRenderer()->setBorders(1.4);
-        button->getRenderer()->setTextColorHover(sf::Color::Blue);
-        button->getRenderer()->setBorderColorHover(sf::Color::Blue);
+        button->getRenderer()->setTextColorHover(sf::Color::White);
+        button->getRenderer()->setBorderColorHover(sf::Color::White);
         P->add(button, name);;
         return button;
     }
@@ -69,15 +71,15 @@ public:
     }
 
 
-    void Animated_Text_Logo(string logo_name,int text_size,int pos_x,int pos_y)
+    void Animated_Text_Logo(string logo_name,int text_size,int pos_x,int pos_y,int spacing)
     {
         for (int i = 0; i < logo_name.length() ; i++)
         {
             Label::Ptr label = Label::create();
             label->setText(logo_name[i]);
             label->setTextSize(text_size);
-            label->setPosition(pos_x, pos_y);
-            label->getRenderer()->setFont("fonts/Himalayas-owAP4.otf");
+            label->setPosition(pos_x+i*30, pos_y);
+            label->getRenderer()->setFont("fonts/SuperCartoon-6R791.ttf");
             label->getRenderer()->setTextOutlineThickness(1.2);
             label->getRenderer()->setTextOutlineColor(sf::Color::Black);
             label->getRenderer()->setTextColor(sf::Color::White);
@@ -86,9 +88,74 @@ public:
         }
     }
 
+    void intro_panel()
+    {
+        auto init_panel = Panel::create({ "100%","100%" });
+        panels["Intro Menu"] = init_panel;
+
+        tgui::Texture background;
+        background.load("background/bck.png");
+        init_panel.get()->getRenderer()->setTextureBackground(background);
+        gui.add(init_panel);
+
+ 
+    }
+
+    void search_panel()
+    {
+        auto init_panel = Panel::create({ 1920.f, 80.f });
+        panels["search_panel"] = init_panel;
+        auto search = return_EditBox("Search", 360, 60, 800, 10, panels["search_panel"], "search");
+        panels["search_panel"]->getRenderer()->setBackgroundColor(sf::Color::Black);
+        panels["search_panel"]->setVisible(true);
+
+        init_panel = Panel::create({ 1920.f, 100.f });
+        init_panel->setPosition({ 0.f,900.f });
+        panels["play_panel"] = init_panel;
+        auto prev_button = return_Button("prev", 30, 30, 900, 20, panels["play_panel"], "prev");
+        panels["play_panel"]->add(prev_button);
+        auto play_button = return_Button("Play", 30, 30, 950, 20, panels["play_panel"], "play");
+        panels["play_panel"]->add(play_button);
+        auto next_button = return_Button("next", 30, 30, 1000, 20, panels["play_panel"], "next");
+        panels["play_panel"]->add(next_button);
+
+        auto progressBar = tgui::ProgressBar::create();
+        progressBar->setPosition(700, 60);
+        progressBar->setSize(520, 10);
+        progressBar->setMinimum(0);
+        progressBar->setMaximum(100);
+
+        
+        progressBar->setValue(0);
+        panels["play_panel"]->add(progressBar);
+       
+        auto sBar = tgui::ProgressBar::create();
+        sBar->setPosition(1640, 60);
+        sBar->setSize(100, 10);
+        sBar->setMinimum(0);
+        sBar->setMaximum(100);
+
+
+        sBar->setValue(0);
+        panels["play_panel"]->add(sBar);
+        
+        
+
+
+
+        panels["play_panel"]->getRenderer()->setBackgroundColor(sf::Color::Black);
+        panels["play_panel"]->setVisible(true);
+
+        gui.add(panels["play_panel"]);
+        gui.add(panels["search_panel"]);
+       
+    }
+
     void UI_template_Maker()
     {
-        Animated_Text_Logo("Smart Player", 40, 500, 500);
+        /*intro_panel();*/
+        /*Animated_Text_Logo("Smart Music Player", 60, 750, 100,30);*/
+        search_panel();
     }
 
 };
@@ -97,32 +164,41 @@ public:
 class UI_Functionality :public UI_Template
 {
 private:
+
     RenderWindow window;
 public:
+
     void init_window()
     {
         
         window.create(VideoMode({ 1920,1080 }), "Smart Music Player");
+        window.setVerticalSyncEnabled(true);
         gui.setTarget(window);
         
         int l = 0;
         sf::Clock clock;
         float animation_time = 0.5f;
 
+        UI_template_Maker();
+
         while (window.isOpen())
         {
             while (const std::optional event = window.pollEvent())
             {
+                gui.handleEvent(*event);
                 if (event->is<sf::Event::Closed>())
+                {   
                     window.close();
+                }
             }
+            
 
-            if (clock.getElapsedTime().asSeconds() > animation_time)
+            /*if (clock.getElapsedTime().asSeconds() > animation_time)
             {
-                text_labels[l % 13]->getRenderer()->setTextColor(sf::Color::Green);
-                for (int i = 0; i < 13; i++)
+                text_labels[l % 18]->getRenderer()->setTextColor(sf::Color(0,100,10));
+                for (int i = 0; i < 18; i++)
                 {
-                    if (i != l % 13)
+                    if (i != l % 18)
                     {
                         text_labels[i]->getRenderer()->setTextColor(sf::Color::White);
                     }
@@ -130,12 +206,13 @@ public:
                 }
                 l++;
                 clock.restart();
-            }
+            }*/
 
-            window.clear(sf::Color::White);
+            window.clear(sf::Color(0,50,25));
             gui.draw();
             window.display();
         }
+        gui.removeAllWidgets();
     }
 };
 
