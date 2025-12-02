@@ -5,6 +5,8 @@
 #include <TGUI/Backend/SFML-Graphics.hpp>
 #include <SFML/Window.hpp>
 
+#include "backup.cpp"
+
 using namespace std;
 using namespace sf;
 using namespace tgui;
@@ -105,9 +107,14 @@ public:
     {
         auto init_panel = Panel::create({ 1920.f, 80.f });
         panels["search_panel"] = init_panel;
-        auto search = return_EditBox("Search", 360, 60, 800, 10, panels["search_panel"], "search");
+        auto search = return_EditBox("Search", 360, 40, 800, 20, panels["search_panel"], "search");
         panels["search_panel"]->getRenderer()->setBackgroundColor(sf::Color::Black);
         panels["search_panel"]->setVisible(true);
+
+        search->onReturnKeyPress([=]
+            {
+
+            });
 
         gui.add(panels["search_panel"]);
 
@@ -151,7 +158,7 @@ public:
 
         auto sound_button = return_Button("", 30, 30, 1600, 50, panels["play_panel"], "sound");
         tgui::Texture s_im;
-        s_im.load("background/sound.jpg");
+        s_im.load("background/volume.png");
         sound_button->getRenderer()->setTexture(s_im);
         s_im.setDefaultSmooth(true);
         panels["play_panel"]->add(sound_button);
@@ -173,12 +180,53 @@ public:
         gui.add(panels["play_panel"]);
     }
 
+    void mid_panel_1()
+    {
+        auto sc_panel = ScrollablePanel::create({ 1920.f,820.f });
+        sc_panel->setPosition(0, 80);
+        sc_panel->getRenderer()->setBackgroundColor(tgui::Color::White);
+        panels["mid_panel_1"] = sc_panel;
+        auto label = tgui::Label::create("Genre");
+        label->setTextSize(30);
+        label->setPosition(600, 50);
+        panels["mid_panel_1"]->add(label);
+        Player player;
+        player.read_from_file("songs_set.csv");
+        map<string, vector<Song>> list=player.get_genre();
+        sc_panel->getVerticalScrollbar()->setValue(10);
+        int j = 0;
+        for (auto& i : list)
+        {
+            auto button = return_Button(i.first, 150, 50, 650, 150 + (60 * j++), panels["mid_panel_1"], "");
+            button->getRenderer()->setRoundedBorderRadius(20);
+            panels["mid_panel_1"]->add(button);
+        }
+        label = tgui::Label::create("Artists");
+        label->setTextSize(30);
+        label->setPosition(600, 500);
+        panels["mid_panel_1"]->add(label);
+
+        j = 0;
+        list = player.get_artist();
+        for (auto& i : list)
+        {
+            auto button = return_Button(i.first, 150, 50, 650, 600 + (60 * j++), panels["mid_panel_1"], "");
+            button->getRenderer()->setRoundedBorderRadius(20);
+            panels["mid_panel_1"]->add(button);
+        }
+
+
+        gui.add(sc_panel);
+
+    }
+
     void UI_template_Maker()
     {
         /*intro_panel();*/
         /*Animated_Text_Logo("Smart Music Player", 60, 750, 100,30);*/
         search_panel();
         play_panel();
+        mid_panel_1();
     }
 
 };

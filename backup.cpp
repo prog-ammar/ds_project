@@ -25,7 +25,7 @@ struct Song
 };
 
 
-double normalize_value(double min_v, double max_v, double v)
+inline double normalize_value(double min_v, double max_v, double v)
 {
     return (v - min_v) / (max_v - min_v);
 }
@@ -104,6 +104,8 @@ public:
     }
 };
 
+
+
 class Player
 {
 private:
@@ -148,6 +150,16 @@ public:
             row++;
             songs[song.id] = song;
         }
+    }
+
+    map<string,vector<Song>> get_genre()
+    {
+        return playlists_by_genre;
+    }
+
+    map<string, vector<Song>> get_artist()
+    {
+        return playlists_by_artist;
     }
 
     void print_playlist_by_genre()
