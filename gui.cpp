@@ -109,14 +109,34 @@ public:
         panels["search_panel"]->getRenderer()->setBackgroundColor(sf::Color::Black);
         panels["search_panel"]->setVisible(true);
 
-        init_panel = Panel::create({ 1920.f, 100.f });
+        gui.add(panels["search_panel"]);
+
+    }
+
+    void play_panel()
+    {
+        auto init_panel = Panel::create({ 1920.f, 100.f });
         init_panel->setPosition({ 0.f,900.f });
         panels["play_panel"] = init_panel;
-        auto prev_button = return_Button("prev", 30, 30, 900, 20, panels["play_panel"], "prev");
+        auto prev_button = return_Button("", 30, 30, 900, 20, panels["play_panel"], "prev");
+        tgui::Texture pr_im;
+        pr_im.load("background/back.png");
+        prev_button->getRenderer()->setTexture(pr_im);
+        pr_im.setDefaultSmooth(true);
         panels["play_panel"]->add(prev_button);
-        auto play_button = return_Button("Play", 30, 30, 950, 20, panels["play_panel"], "play");
+
+        auto play_button = return_Button("", 30, 30, 950, 20, panels["play_panel"], "play");
+        tgui::Texture p_im;
+        p_im.load("background/play1.png");
+        play_button->getRenderer()->setTexture(p_im);
+        p_im.setDefaultSmooth(true);
         panels["play_panel"]->add(play_button);
-        auto next_button = return_Button("next", 30, 30, 1000, 20, panels["play_panel"], "next");
+
+        auto next_button = return_Button("", 30, 30, 1000, 20, panels["play_panel"], "next");
+        tgui::Texture n_im;
+        n_im.load("background/next.png");
+        next_button->getRenderer()->setTexture(n_im);
+        n_im.setDefaultSmooth(true);
         panels["play_panel"]->add(next_button);
 
         auto progressBar = tgui::ProgressBar::create();
@@ -125,10 +145,17 @@ public:
         progressBar->setMinimum(0);
         progressBar->setMaximum(100);
 
-        
+
         progressBar->setValue(0);
         panels["play_panel"]->add(progressBar);
-       
+
+        auto sound_button = return_Button("", 30, 30, 1600, 50, panels["play_panel"], "sound");
+        tgui::Texture s_im;
+        s_im.load("background/sound.jpg");
+        sound_button->getRenderer()->setTexture(s_im);
+        s_im.setDefaultSmooth(true);
+        panels["play_panel"]->add(sound_button);
+
         auto sBar = tgui::ProgressBar::create();
         sBar->setPosition(1640, 60);
         sBar->setSize(100, 10);
@@ -138,17 +165,12 @@ public:
 
         sBar->setValue(0);
         panels["play_panel"]->add(sBar);
-        
-        
-
 
 
         panels["play_panel"]->getRenderer()->setBackgroundColor(sf::Color::Black);
         panels["play_panel"]->setVisible(true);
 
         gui.add(panels["play_panel"]);
-        gui.add(panels["search_panel"]);
-       
     }
 
     void UI_template_Maker()
@@ -156,6 +178,7 @@ public:
         /*intro_panel();*/
         /*Animated_Text_Logo("Smart Music Player", 60, 750, 100,30);*/
         search_panel();
+        play_panel();
     }
 
 };
