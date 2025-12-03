@@ -104,7 +104,7 @@ private:
 class Mp3Player
 {
 public:
-    Mp3Player() { is_playing = true; }
+    Mp3Player() { is_playing = false; }
 
 
     bool get_status() { return is_playing; }
@@ -308,11 +308,8 @@ public:
         progressBar->setPosition(700, 60);
         progressBar->setSize(520, 10);
         progressBar->setMinimum(0);
-        progressBar->setMaximum(100);
-
-
         progressBar->setValue(0);
-        panels["play_panel"]->add(progressBar);
+        panels["play_panel"]->add(progressBar,"p_bar");
 
         auto sound_button = return_Button("", 30, 30, 1600, 50, panels["play_panel"], "sound");
         tgui::Texture s_im;
@@ -322,17 +319,7 @@ public:
         s_im.setDefaultSmooth(true);
         panels["play_panel"]->add(sound_button);
 
-        auto sBar = tgui::Slider::create();
-        sBar->setPosition(1640, 60);
-        sBar->setSize(100, 10);
-        sBar->setMinimum(0);
-        sBar->setMaximum(100);
-        sBar->getRenderer()->setThumbColor(tgui::Color::Blue);
-        sBar->getRenderer()->setThumbColorHover(tgui::Color::Blue);
-        
-
-        panels["play_panel"]->add(sBar,"sound_bar");
-
+        auto sBar = return_Slider("",100,10,1640,60,panels["play_panel"],"sound_bar");
         sBar->onValueChange([=]
             {
                 persistentPlayer->setVolume(sBar->getValue());
@@ -415,13 +402,14 @@ public:
 
     }
 
-    void play_song(string song_id)
+    void play_song(Song song)
     {
         if (!persistentPlayer)
             persistentPlayer = std::make_unique<Mp3Player>();
 
+        string file_path = "songs/" + song.id + ".mp3" ;
         
-        if (!persistentPlayer->open("songs/2.mp3"))
+        if (!persistentPlayer->open(file_path))
         {
             auto label = tgui::Label::create("Failed to open MP3");
             label->setTextSize(20);
@@ -429,23 +417,22 @@ public:
             panels["play_panel"]->add(label);
             return;
         }
-        persistentPlayer->setVolume(100.f);
         persistentPlayer->play();
 
+        
 
         auto button_1 = panels["play_panel"]->get<tgui::Button>("play");
 
-
-       
         button_1->onPress([&] {
-            if(persistentPlayer->get_status())
+            if (persistentPlayer->get_status())
                 persistentPlayer->pause();
             else
-               persistentPlayer->play();
-            
+                persistentPlayer->play();
+
             });
-        
-        
+
+        auto p_bar = panels["play_panel"]->get<tgui::ProgressBar>("p_bar");
+        p_bar->setMaximum(song.duration);
     }
 
     void make_mid_panels_of_each_genre(string genre,vector<Song> g_songs)
@@ -470,6 +457,11 @@ public:
             auto button = return_Button("", 80, 80, pos_x, pos_y, panels[genre], i.id);
             button->getRenderer()->setTexture(cd_img);
             button->getRenderer()->setBorderColor(tgui::Color::White);
+
+            button->onPress([=]
+                {
+                    play_song(i);
+                });
 
             auto label = tgui::Label::create(i.title);
             label->setTextSize(13);
@@ -502,7 +494,7 @@ public:
         play_panel();
         main_mid_panel();
         mid_panel_1();
-        play_song("songs/2");
+        
     }
 
 };
@@ -527,7 +519,19 @@ public:
         float animation_time = 0.5f;
 
         UI_template_Maker();
+        /*unsigned int v = p_bar->getValue();
+        sf::Clock ck;
+        while (v < p_bar->getMaximum())
+        {
+            if (ck.getElapsedTime().asSeconds() >= 1)
+            {
+                p_bar->incrementValue();
+                v = p_bar->getValue();
+                ck.restart();
+            }
 
+        }*/
+        auto p_bar = panels["play_panel"]->get<tgui::ProgressBar>("p_bar");
         while (window.isOpen())
         {
             while (const std::optional event = window.pollEvent())
@@ -536,6 +540,22 @@ public:
                 if (event->is<sf::Event::Closed>())
                 {   
                     window.close();
+                }
+            }
+
+            if (persistentPlayer->get_status())
+            {
+                if (clock.getElapsedTime().asSeconds() >= 1.0f)
+                {
+                    if (p_bar->getValue() < p_bar->getMaximum())
+                    {
+                        p_bar->incrementValue();
+                    }
+                    else
+                    {
+                        persistentPlayer->pause();
+                    }
+                    clock.restart();
                 }
             }
             
