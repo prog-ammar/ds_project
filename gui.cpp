@@ -4,12 +4,136 @@
 #include<TGUI/Widget.hpp>
 #include <TGUI/Backend/SFML-Graphics.hpp>
 #include <SFML/Window.hpp>
-
+#include <SFML/Audio.hpp>
+#include <SFML/System.hpp>
+#include <mutex>
+#include <mpg123.h>
+#include <vector>
+#include <memory>
 #include "backup.cpp"
 
 using namespace std;
 using namespace sf;
 using namespace tgui;
+
+
+
+class Mp3Stream : public sf::SoundStream
+{
+public:
+    Mp3Stream() {}
+
+    bool open(const std::string& filename)
+    {
+        mpg123_init();
+        int err = MPG123_OK;
+
+        mh = mpg123_new(NULL, &err);
+        if (!mh)
+            return false;
+
+        if (mpg123_open(mh, filename.c_str()) != MPG123_OK)
+            return false;
+
+        // Some builds of libmpg123 restrict supported output sample rates.
+        // Ensure we request a supported rate (44100, 22050 or 11025). 44100 is the safe default.
+        mpg123_format_none(mh);
+        int setRet = mpg123_format(mh, 44100, MPG123_STEREO, MPG123_ENC_SIGNED_16);
+        if (setRet != MPG123_OK)
+        {
+            // Failed to set a supported output format
+            mpg123_close(mh);
+            mpg123_delete(mh);
+            mh = nullptr;
+            mpg123_exit();
+            return false;
+        }
+
+        long rate = 0;
+        int channels = 0;
+        int encoding = 0;
+        mpg123_getformat(mh, &rate, &channels, &encoding);
+
+        // initialize(channelCount, sampleRate)
+        initialize(static_cast<unsigned int>(channels), static_cast<unsigned int>(rate),{});
+
+        bufferSize = mpg123_outblock(mh);
+        buffer.resize(bufferSize);
+
+        return true;
+    }
+
+    ~Mp3Stream()
+    {
+        if (mh)
+        {
+            mpg123_close(mh);
+            mpg123_delete(mh);
+            mpg123_exit();
+        }
+    }
+
+protected:
+
+    virtual bool onGetData(Chunk& data) override
+    {
+        size_t done = 0;
+        int ret = mpg123_read(mh, buffer.data(), bufferSize, &done);
+
+        if (ret == MPG123_DONE || done == 0)
+            return false;
+
+        data.samples = reinterpret_cast<short*>(buffer.data());
+        data.sampleCount = done / sizeof(short);
+        return true;
+    }
+
+    virtual void onSeek(sf::Time timeOffset) override
+    {
+        // Optional: implement seeking
+        // sf::Time -> samples: sampleOffset = timeOffset.asSeconds() * sampleRate * channelCount
+        // then mpg123_seek(mh, sampleOffset, SEEK_SET)
+    }
+
+private:
+    mpg123_handle* mh = nullptr;
+    size_t bufferSize = 0;
+    std::vector<unsigned char> buffer;
+};
+
+class Mp3Player
+{
+public:
+    Mp3Player() { is_playing = true; }
+
+
+    bool get_status() { return is_playing; }
+    void change_status() { is_playing = !is_playing; }
+
+    bool open(const std::string& filename)
+    {
+        stream = std::make_unique<Mp3Stream>();
+        if (!stream->open(filename))
+            return false;
+
+        return true;
+    }
+
+    void play() { if (stream) stream->play(); change_status(); }
+    void pause() { if (stream) stream->pause(); change_status(); }
+    void stop() { if (stream) stream->stop(); }
+    void setVolume(float volume) { if (stream) stream->setVolume(volume); }
+
+    // Optional: duration if you compute it externally
+    void setDuration(float seconds) { durationSeconds = seconds; }
+    float getDuration() const { return durationSeconds; }
+
+private:
+    std::unique_ptr<Mp3Stream> stream;
+    float durationSeconds = 0.f;
+    bool is_playing;
+};
+
 
 
 class UI_Template
@@ -19,6 +143,7 @@ protected:
     vector<tgui::Label::Ptr> text_labels;
     RenderWindow window;
     Gui gui;
+    std::unique_ptr<Mp3Player> persistentPlayer;
 
 public:
 
@@ -63,6 +188,19 @@ public:
         return editBox;
     }
 
+    
+    auto return_Slider(string text, int width, int height, int pos_x, int pos_y, Panel::Ptr P, string name)
+    {
+        auto slider = Slider::create();
+        slider->setPosition(pos_x, pos_y);
+        slider->setSize(width, height);
+        slider->setMinimum(0);
+        slider->setMaximum(100);
+        slider->getRenderer()->setThumbColor(tgui::Color::Blue);
+        slider->getRenderer()->setThumbColorHover(tgui::Color::Blue);
+        P->add(slider, "sound_bar");
+        return slider;
+    }
 
     void display_panel(string name)
     {
@@ -184,15 +322,21 @@ public:
         s_im.setDefaultSmooth(true);
         panels["play_panel"]->add(sound_button);
 
-        auto sBar = tgui::ProgressBar::create();
+        auto sBar = tgui::Slider::create();
         sBar->setPosition(1640, 60);
         sBar->setSize(100, 10);
         sBar->setMinimum(0);
         sBar->setMaximum(100);
+        sBar->getRenderer()->setThumbColor(tgui::Color::Blue);
+        sBar->getRenderer()->setThumbColorHover(tgui::Color::Blue);
+        
 
+        panels["play_panel"]->add(sBar,"sound_bar");
 
-        sBar->setValue(0);
-        panels["play_panel"]->add(sBar);
+        sBar->onValueChange([=]
+            {
+                persistentPlayer->setVolume(sBar->getValue());
+            });
 
 
         panels["play_panel"]->getRenderer()->setBackgroundColor(sf::Color::White);
@@ -271,6 +415,39 @@ public:
 
     }
 
+    void play_song(string song_id)
+    {
+        if (!persistentPlayer)
+            persistentPlayer = std::make_unique<Mp3Player>();
+
+        
+        if (!persistentPlayer->open("songs/2.mp3"))
+        {
+            auto label = tgui::Label::create("Failed to open MP3");
+            label->setTextSize(20);
+            label->setPosition(200, 20);
+            panels["play_panel"]->add(label);
+            return;
+        }
+        persistentPlayer->setVolume(100.f);
+        persistentPlayer->play();
+
+
+        auto button_1 = panels["play_panel"]->get<tgui::Button>("play");
+
+
+       
+        button_1->onPress([&] {
+            if(persistentPlayer->get_status())
+                persistentPlayer->pause();
+            else
+               persistentPlayer->play();
+            
+            });
+        
+        
+    }
+
     void make_mid_panels_of_each_genre(string genre,vector<Song> g_songs)
     {
         panels["main_mid_panel"]->setVisible(true);
@@ -325,6 +502,7 @@ public:
         play_panel();
         main_mid_panel();
         mid_panel_1();
+        play_song("songs/2");
     }
 
 };
