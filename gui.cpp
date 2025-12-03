@@ -107,8 +107,25 @@ public:
     {
         auto init_panel = Panel::create({ 1920.f, 80.f });
         panels["search_panel"] = init_panel;
-        auto search = return_EditBox("Search", 360, 40, 800, 20, panels["search_panel"], "search");
-        panels["search_panel"]->getRenderer()->setBackgroundColor(sf::Color::Black);
+        auto search = return_EditBox("Search", 360, 40, 750, 25, panels["search_panel"], "search");
+        tgui::Texture pr_im;
+        pr_im.load("background/logo.png");
+        auto label = tgui::Label::create("");
+        label->setSize(50,50);
+        label->setPosition(150, 20);
+        label->getRenderer()->setTextureBackground(pr_im);
+        panels["search_panel"]->add(label);
+
+        label = tgui::Label::create("Smart Music Player");
+        label->setTextSize(25);
+        label->setPosition(220, 30);
+        tgui::Font font("fonts/Vulturemotor Demo.otf");
+        label->getRenderer()->setFont(font);
+        label->getRenderer()->setTextColor(tgui::Color(0,0,139));
+        panels["search_panel"]->add(label);
+        
+
+        panels["search_panel"]->getRenderer()->setBackgroundColor(sf::Color::White);
         panels["search_panel"]->setVisible(true);
 
         search->onReturnKeyPress([=]
@@ -130,12 +147,14 @@ public:
         pr_im.load("background/back.png");
         prev_button->getRenderer()->setTexture(pr_im);
         pr_im.setDefaultSmooth(true);
+        prev_button->getRenderer()->setBorderColor(tgui::Color::White);
         panels["play_panel"]->add(prev_button);
 
         auto play_button = return_Button("", 30, 30, 950, 20, panels["play_panel"], "play");
         tgui::Texture p_im;
         p_im.load("background/play1.png");
         play_button->getRenderer()->setTexture(p_im);
+        play_button->getRenderer()->setBorderColor(tgui::Color::White);
         p_im.setDefaultSmooth(true);
         panels["play_panel"]->add(play_button);
 
@@ -143,6 +162,7 @@ public:
         tgui::Texture n_im;
         n_im.load("background/next.png");
         next_button->getRenderer()->setTexture(n_im);
+        next_button->getRenderer()->setBorderColor(tgui::Color::White);
         n_im.setDefaultSmooth(true);
         panels["play_panel"]->add(next_button);
 
@@ -160,6 +180,7 @@ public:
         tgui::Texture s_im;
         s_im.load("background/volume.png");
         sound_button->getRenderer()->setTexture(s_im);
+        sound_button->getRenderer()->setBorderColor(tgui::Color::White);
         s_im.setDefaultSmooth(true);
         panels["play_panel"]->add(sound_button);
 
@@ -174,7 +195,7 @@ public:
         panels["play_panel"]->add(sBar);
 
 
-        panels["play_panel"]->getRenderer()->setBackgroundColor(sf::Color::Black);
+        panels["play_panel"]->getRenderer()->setBackgroundColor(sf::Color::White);
         panels["play_panel"]->setVisible(true);
 
         gui.add(panels["play_panel"]);
