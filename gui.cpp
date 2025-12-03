@@ -147,6 +147,11 @@ protected:
 
 public:
 
+    UI_Template()
+    {
+        persistentPlayer = std::make_unique<Mp3Player>();
+    }
+
     auto return_Button(string cap, int width, int height, int pos_x, int pos_y, Panel::Ptr P, string name)
     {
         auto button = Button::create();
@@ -280,13 +285,25 @@ public:
         auto init_panel = Panel::create({ 1920.f, 100.f });
         init_panel->setPosition({ 0.f,900.f });
         panels["play_panel"] = init_panel;
+
+
+        auto music_button = return_Button("", 40, 40, 150, 20, panels["play_panel"], "music_img");
+        tgui::Texture m("background/music.png");
+        music_button->getRenderer()->setTexture(m);
+        music_button->getRenderer()->setBorderColor(tgui::Color::White);
+
+        auto song_label = tgui::Label::create("");
+        song_label->setTextSize(12);
+        song_label->setPosition(210, 30);
+        panels["play_panel"]->add(song_label, "song_label");
+
         auto prev_button = return_Button("", 30, 30, 900, 20, panels["play_panel"], "prev");
         tgui::Texture pr_im;
         pr_im.load("background/back.png");
         prev_button->getRenderer()->setTexture(pr_im);
         pr_im.setDefaultSmooth(true);
         prev_button->getRenderer()->setBorderColor(tgui::Color::White);
-        panels["play_panel"]->add(prev_button);
+        
 
         auto play_button = return_Button("", 30, 30, 950, 20, panels["play_panel"], "play");
         tgui::Texture p_im;
@@ -294,7 +311,7 @@ public:
         play_button->getRenderer()->setTexture(p_im);
         play_button->getRenderer()->setBorderColor(tgui::Color::White);
         p_im.setDefaultSmooth(true);
-        panels["play_panel"]->add(play_button);
+        
 
         auto next_button = return_Button("", 30, 30, 1000, 20, panels["play_panel"], "next");
         tgui::Texture n_im;
@@ -302,7 +319,7 @@ public:
         next_button->getRenderer()->setTexture(n_im);
         next_button->getRenderer()->setBorderColor(tgui::Color::White);
         n_im.setDefaultSmooth(true);
-        panels["play_panel"]->add(next_button);
+        
 
         auto progressBar = tgui::ProgressBar::create();
         progressBar->setPosition(700, 60);
@@ -317,9 +334,10 @@ public:
         sound_button->getRenderer()->setTexture(s_im);
         sound_button->getRenderer()->setBorderColor(tgui::Color::White);
         s_im.setDefaultSmooth(true);
-        panels["play_panel"]->add(sound_button);
+        
 
         auto sBar = return_Slider("",100,10,1640,60,panels["play_panel"],"sound_bar");
+        sBar->setValue(100);
         sBar->onValueChange([=]
             {
                 persistentPlayer->setVolume(sBar->getValue());
@@ -403,22 +421,21 @@ public:
     }
 
     void play_song(Song song)
-    {
-        if (!persistentPlayer)
-            persistentPlayer = std::make_unique<Mp3Player>();
+    {            
+        auto song_label = panels["play_panel"]->get<tgui::Label>("song_label");
+        auto p_bar = panels["play_panel"]->get<tgui::ProgressBar>("p_bar");
+        p_bar->setValue(0);
 
         string file_path = "songs/" + song.id + ".mp3" ;
         
+        
         if (!persistentPlayer->open(file_path))
         {
-            auto label = tgui::Label::create("Failed to open MP3");
-            label->setTextSize(20);
-            label->setPosition(200, 20);
-            panels["play_panel"]->add(label);
+            song_label->setText("Failed to Open MP3 File");
             return;
         }
         persistentPlayer->play();
-
+        song_label->setText(song.title);
         
 
         auto button_1 = panels["play_panel"]->get<tgui::Button>("play");
@@ -431,8 +448,12 @@ public:
 
             });
 
-        auto p_bar = panels["play_panel"]->get<tgui::ProgressBar>("p_bar");
+        
+        
         p_bar->setMaximum(song.duration);
+
+        
+        
     }
 
     void make_mid_panels_of_each_genre(string genre,vector<Song> g_songs)
