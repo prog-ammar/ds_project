@@ -215,14 +215,21 @@ public:
         player.read_from_file("songs_set.csv");
         map<string, vector<Song>> list=player.get_genre();
         sc_panel->getVerticalScrollbar()->setValue(10);
+        tgui::Texture cd_img("background/cd.png");
         int j = 0;
         for (auto& i : list)
         {
-            auto button = return_Button(i.first, 150, 50, 650, 150 + (60 * j++), panels["mid_panel_1"], "");
-            button->getRenderer()->setRoundedBorderRadius(20);
+            auto button = return_Button("", 80, 80, 600 + (140 * j), 150 , panels["mid_panel_1"], i.first);
+            auto label = tgui::Label::create(i.first);
+            label->setTextSize(20);
+            label->setPosition(580 + (150 * j), 250);
+            button->getRenderer()->setTexture(cd_img);
+            button->getRenderer()->setBorderColor(tgui::Color::White);
+            panels["mid_panel_1"]->add(label);
             panels["mid_panel_1"]->add(button);
+            j++;
         }
-        label = tgui::Label::create("Artists");
+        /*label = tgui::Label::create("Artists");
         label->setTextSize(30);
         label->setPosition(600, 500);
         panels["mid_panel_1"]->add(label);
@@ -234,7 +241,7 @@ public:
             auto button = return_Button(i.first, 150, 50, 650, 600 + (60 * j++), panels["mid_panel_1"], "");
             button->getRenderer()->setRoundedBorderRadius(20);
             panels["mid_panel_1"]->add(button);
-        }
+        }*/
 
 
         gui.add(sc_panel);
