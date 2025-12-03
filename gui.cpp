@@ -201,6 +201,18 @@ public:
         gui.add(panels["play_panel"]);
     }
 
+    void main_mid_panel()
+    {
+
+        auto sc_panel = ScrollablePanel::create({ 1920.f,820.f });
+        sc_panel->setPosition(0, 80);
+        sc_panel->getRenderer()->setBackgroundColor(tgui::Color::White);
+        panels["main_mid_panel"] = sc_panel;
+
+        sc_panel->setVisible(false);
+        gui.add(panels["main_mid_panel"]);
+    }
+
     void mid_panel_1()
     {
         auto sc_panel = ScrollablePanel::create({ 1920.f,820.f });
@@ -219,7 +231,7 @@ public:
         int j = 0;
         for (auto& i : list)
         {
-            auto button = return_Button("", 80, 80, 600 + (140 * j), 150 , panels["mid_panel_1"], i.first);
+            auto button = return_Button("", 80, 80, 600 + (140 * j), 150, panels["mid_panel_1"], i.first);
             auto label = tgui::Label::create(i.first);
             label->setTextSize(20);
             label->setPosition(580 + (150 * j), 250);
@@ -228,7 +240,18 @@ public:
             panels["mid_panel_1"]->add(label);
             panels["mid_panel_1"]->add(button);
             j++;
+
+            vector < Song > s1 = list[i.first];
+            button->onPress([=]
+                {
+                    panels["mid_panel_1"]->setVisible(false);
+                    make_mid_panels_of_each_genre(i.first, s1);
+                });
         }
+        
+
+        
+
         /*label = tgui::Label::create("Artists");
         label->setTextSize(30);
         label->setPosition(600, 500);
@@ -248,12 +271,59 @@ public:
 
     }
 
+    void make_mid_panels_of_each_genre(string genre,vector<Song> g_songs)
+    {
+        panels["main_mid_panel"]->setVisible(true);
+        auto g_panel= ScrollablePanel::create({ 1500.f,820.f });
+        g_panel->setPosition(420, 80);
+        g_panel->getRenderer()->setBackgroundColor(tgui::Color::White);
+        panels[genre] = g_panel;
+
+        tgui::Texture cd_img("background/cd.png");
+        int j = 0;
+
+        for (auto i : g_songs)
+        {
+            int col = j % 6;
+            int row = j / 6;
+
+            int pos_x = 80 + (col * 150);
+            int pos_y = 150 + (row * 150);
+
+            auto button = return_Button("", 80, 80, pos_x, pos_y, panels[genre], i.id);
+            button->getRenderer()->setTexture(cd_img);
+            button->getRenderer()->setBorderColor(tgui::Color::White);
+
+            auto label = tgui::Label::create(i.title);
+            label->setTextSize(13);
+            label->setPosition(pos_x, pos_y + 5 + 80);
+
+            panels[genre]->add(label);
+            panels[genre]->add(button); 
+            j++;
+        }
+        gui.add(panels[genre]);
+        auto back_button = return_Button("", 50, 50, 350, 50,panels["main_mid_panel"],"back - button");
+        tgui::Texture pr_im("background/back.png");
+        back_button->getRenderer()->setTexture(pr_im);
+        back_button->getRenderer()->setBorderColor(tgui::Color::White);
+        back_button->onPress([=]
+            {
+                panels["main_mid_panel"]->setVisible(false);
+                panels[genre]->setVisible(false);
+                panels["mid_panel_1"]->setVisible(true);
+                
+            });
+        
+    }
+
     void UI_template_Maker()
     {
         /*intro_panel();*/
         /*Animated_Text_Logo("Smart Music Player", 60, 750, 100,30);*/
         search_panel();
         play_panel();
+        main_mid_panel();
         mid_panel_1();
     }
 
