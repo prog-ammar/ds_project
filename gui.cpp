@@ -63,6 +63,39 @@ public:
         return true;
     }
 
+    virtual void onSeek(sf::Time timeOffset) override
+    {
+        if (!mh)
+            return;
+
+        pause();
+
+        // 1. Get the time offset in seconds
+        double targetSeconds = timeOffset.asSeconds();
+
+        // 2. Convert the time (in seconds) to the corresponding FRAME number.
+        // This is the CRUCIAL step for MP3 seeking.
+        long frameOffset = mpg123_timeframe(mh, targetSeconds);
+
+        // 3. Ensure a valid frame offset was found
+        if (frameOffset < 0) {
+            // Handle error (e.g., target time is outside the audio duration)
+            std::cerr << "Error calculating frame offset for seeking." << std::endl;
+            return;
+        }
+
+        // 4. Seek to the frame offset (using SEEK_SET)
+        // The offset is now a frame number, not a byte count.
+        int result = mpg123_seek(mh, frameOffset, SEEK_SET);
+
+        play();
+
+        if (result < 0) {
+            // Handle error during the seek operation
+            std::cerr << "mpg123_seek failed with error code: " << result << std::endl;
+        }
+    }
+
     ~Mp3Stream()
     {
         if (mh)
@@ -86,13 +119,6 @@ protected:
         data.samples = reinterpret_cast<short*>(buffer.data());
         data.sampleCount = done / sizeof(short);
         return true;
-    }
-
-    virtual void onSeek(sf::Time timeOffset) override
-    {
-        // Optional: implement seeking
-        // sf::Time -> samples: sampleOffset = timeOffset.asSeconds() * sampleRate * channelCount
-        // then mpg123_seek(mh, sampleOffset, SEEK_SET)
     }
 
 private:
@@ -123,6 +149,7 @@ public:
     void pause() { if (stream) stream->pause(); change_status(); }
     void stop() { if (stream) stream->stop(); }
     void setVolume(float volume) { if (stream) stream->setVolume(volume); }
+    void seek(double time) { sf::Time t= sf::seconds(time);if (stream) stream->onSeek(t); }
 
     // Optional: duration if you compute it externally
     void setDuration(float seconds) { durationSeconds = seconds; }
@@ -196,6 +223,7 @@ public:
     
     auto return_Slider(string text, int width, int height, int pos_x, int pos_y, Panel::Ptr P, string name)
     {
+
         auto slider = Slider::create();
         slider->setPosition(pos_x, pos_y);
         slider->setSize(width, height);
@@ -321,12 +349,23 @@ public:
         n_im.setDefaultSmooth(true);
         
 
-        auto progressBar = tgui::ProgressBar::create();
+        auto progressBar = tgui::Slider::create();
         progressBar->setPosition(700, 60);
         progressBar->setSize(520, 10);
         progressBar->setMinimum(0);
         progressBar->setValue(0);
         panels["play_panel"]->add(progressBar,"p_bar");
+        /*progressBar->getRenderer()->setThumbColor(tgui::Color::Blue);
+        progressBar->getRenderer()->setThumbColorHover(tgui::Color::Blue);*/
+
+        progressBar->onMouseEnter([=]
+            {
+                progressBar->onValueChange([=]
+                    {
+                        persistentPlayer->seek(static_cast<double>(progressBar->getValue()));
+                    });
+                
+            });
 
         auto sound_button = return_Button("", 30, 30, 1600, 50, panels["play_panel"], "sound");
         tgui::Texture s_im;
@@ -423,8 +462,6 @@ public:
     void play_song(Song song)
     {            
         auto song_label = panels["play_panel"]->get<tgui::Label>("song_label");
-        auto p_bar = panels["play_panel"]->get<tgui::ProgressBar>("p_bar");
-        p_bar->setValue(0);
 
         string file_path = "songs/" + song.id + ".mp3" ;
         
@@ -437,20 +474,29 @@ public:
         persistentPlayer->play();
         song_label->setText(song.title);
         
+        
+        auto p_bar = panels["play_panel"]->get<tgui::Slider>("p_bar");
+        p_bar->setValue(0);
+        p_bar->setMaximum(song.duration);
 
         auto button_1 = panels["play_panel"]->get<tgui::Button>("play");
+        /*tgui::Texture t1("background/pause.png");
+        button_1->getRenderer()->setTexture(t1);
+        tgui::Texture t2("background/play1.png");*/
 
-        button_1->onPress([&] {
+
+        /*button_1->onPress([&] {
             if (persistentPlayer->get_status())
+            {
                 persistentPlayer->pause();
+            }
+                
             else
+            {
                 persistentPlayer->play();
+            }
 
-            });
-
-        
-        
-        p_bar->setMaximum(song.duration);
+            });*/
 
         
         
@@ -552,7 +598,7 @@ public:
             }
 
         }*/
-        auto p_bar = panels["play_panel"]->get<tgui::ProgressBar>("p_bar");
+        auto p_bar = panels["play_panel"]->get<tgui::Slider>("p_bar");
         while (window.isOpen())
         {
             while (const std::optional event = window.pollEvent())
@@ -570,7 +616,7 @@ public:
                 {
                     if (p_bar->getValue() < p_bar->getMaximum())
                     {
-                        p_bar->incrementValue();
+                        p_bar->setValue(p_bar->getValue()+1.0f);
                     }
                     else
                     {
