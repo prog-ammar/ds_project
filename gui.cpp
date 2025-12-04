@@ -20,6 +20,18 @@ using namespace tgui;
 
 class Mp3Stream : public sf::SoundStream
 {
+
+private:
+
+    mpg123_handle* mh = nullptr;
+    size_t bufferSize = 0;
+    std::vector<unsigned char> buffer;
+    size_t samplesProcessed;
+
+    long rate = 0;
+    int channels = 0;
+    int encoding = 0;
+    int samplecount = 0;
 public:
     Mp3Stream() {}
 
@@ -49,14 +61,13 @@ public:
             return false;
         }
 
-        long rate = 0;
-        int channels = 0;
-        int encoding = 0;
+        const off_t length = mpg123_length(mh);
+
         mpg123_getformat(mh, &rate, &channels, &encoding);
 
         // initialize(channelCount, sampleRate)
         initialize(static_cast<unsigned int>(channels), static_cast<unsigned int>(rate),{});
-
+        samplecount = channels * length;
         bufferSize = mpg123_outblock(mh);
         buffer.resize(bufferSize);
 
@@ -65,35 +76,36 @@ public:
 
     virtual void onSeek(sf::Time timeOffset) override
     {
-        if (!mh)
+        if(!mh)
             return;
-
-        pause();
-
-        // 1. Get the time offset in seconds
-        double targetSeconds = timeOffset.asSeconds();
-
-        // 2. Convert the time (in seconds) to the corresponding FRAME number.
-        // This is the CRUCIAL step for MP3 seeking.
-        long frameOffset = mpg123_timeframe(mh, targetSeconds);
-
-        // 3. Ensure a valid frame offset was found
-        if (frameOffset < 0) {
-            // Handle error (e.g., target time is outside the audio duration)
-            std::cerr << "Error calculating frame offset for seeking." << std::endl;
-            return;
+        SoundSource::Status old = getStatus();
+           
+        if (SoundSource::Status::Playing == old)
+        {
+            pause();
         }
 
-        // 4. Seek to the frame offset (using SEEK_SET)
-        // The offset is now a frame number, not a byte count.
-        int result = mpg123_seek(mh, frameOffset, SEEK_SET);
-
-        play();
-
-        if (result < 0) {
-            // Handle error during the seek operation
-            std::cerr << "mpg123_seek failed with error code: " << result << std::endl;
+        double t = timeOffset.asSeconds();
+        // Convert requested time -> decoded PCM sample offset (interleaved samples).
+        const off_t new_offset =
+            mpg123_seek(mh, static_cast<off_t>(t*rate), SEEK_SET);
+        if (new_offset < 0)
+        {
+            sf::err() << "Failed to seek with mpg123: "
+                << mpg123_plain_strerror(static_cast<int>(new_offset)) << std::endl;
         }
+        else
+        {
+            initialize(channels, rate,{});
+            samplesProcessed = new_offset;
+            
+        }
+
+        if (SoundSource::Status::Playing == old)
+        {
+            play();
+        }
+
     }
 
     ~Mp3Stream()
@@ -118,17 +130,20 @@ protected:
 
         data.samples = reinterpret_cast<short*>(buffer.data());
         data.sampleCount = done / sizeof(short);
+
+        samplesProcessed += data.sampleCount;
         return true;
     }
 
-private:
-    mpg123_handle* mh = nullptr;
-    size_t bufferSize = 0;
-    std::vector<unsigned char> buffer;
+
 };
 
 class Mp3Player
 {
+private:
+    std::unique_ptr<Mp3Stream> stream;
+    float durationSeconds = 0.f;
+    bool is_playing;
 public:
     Mp3Player() { is_playing = false; }
 
@@ -155,10 +170,7 @@ public:
     void setDuration(float seconds) { durationSeconds = seconds; }
     float getDuration() const { return durationSeconds; }
 
-private:
-    std::unique_ptr<Mp3Stream> stream;
-    float durationSeconds = 0.f;
-    bool is_playing;
+
 };
 
 
@@ -179,7 +191,7 @@ public:
         persistentPlayer = std::make_unique<Mp3Player>();
     }
 
-    auto return_Button(string cap, int width, int height, int pos_x, int pos_y, Panel::Ptr P, string name)
+    auto return_Button(string cap, int width, int height, int pos_x, int pos_y, Panel::Ptr P, string name, string texture_path = "")
     {
         auto button = Button::create();
         button->setText(cap);
@@ -188,7 +200,14 @@ public:
         button->getRenderer()->setBorders(1.4);
         button->getRenderer()->setTextColorHover(sf::Color::White);
         button->getRenderer()->setBorderColorHover(sf::Color::White);
-        P->add(button, name);;
+        if (texture_path != "")
+        {
+            tgui::Texture t(texture_path);
+            button->getRenderer()->setTexture(t);
+            button->getRenderer()->setBorderColor(tgui::Color::White);
+            t.setDefaultSmooth(true);
+        }
+        P->add(button, name);
         return button;
     }
 
@@ -221,7 +240,7 @@ public:
     }
 
     
-    auto return_Slider(string text, int width, int height, int pos_x, int pos_y, Panel::Ptr P, string name)
+    auto return_Slider(int width, int height, int pos_x, int pos_y, Panel::Ptr P, string name)
     {
 
         auto slider = Slider::create();
@@ -231,8 +250,23 @@ public:
         slider->setMaximum(100);
         slider->getRenderer()->setThumbColor(tgui::Color::Blue);
         slider->getRenderer()->setThumbColorHover(tgui::Color::Blue);
-        P->add(slider, "sound_bar");
+        P->add(slider, name);
         return slider;
+    }
+
+    auto return_Label(string text, int text_size , int pos_x, int pos_y, Panel::Ptr P, string name="", string texture_path = "")
+    {
+        auto label = Label::create(text);
+        label->setPosition(pos_x, pos_y);
+        label->setTextSize(text_size);
+        if (texture_path != "")
+        {
+            tgui::Texture t(texture_path);
+            label->getRenderer()->setTextureBackground(t);
+            t.setDefaultSmooth(true);
+        }
+        P->add(label, name);
+        return label;
     }
 
     void display_panel(string name)
@@ -279,23 +313,14 @@ public:
         auto init_panel = Panel::create({ 1920.f, 80.f });
         panels["search_panel"] = init_panel;
         auto search = return_EditBox("Search", 360, 40, 750, 25, panels["search_panel"], "search");
-        tgui::Texture pr_im;
-        pr_im.load("background/logo.png");
-        auto label = tgui::Label::create("");
-        label->setSize(50,50);
-        label->setPosition(150, 20);
-        label->getRenderer()->setTextureBackground(pr_im);
-        panels["search_panel"]->add(label);
+        auto label = return_Label("", 0, 150, 20, panels["search_panel"], "bg", "background/logo.png");
+        label->setSize(50, 50);
 
-        label = tgui::Label::create("Smart Music Player");
-        label->setTextSize(25);
-        label->setPosition(220, 30);
+        label = return_Label("Smart Music Player",25,220,30,panels["search_panel"],"logo");
         tgui::Font font("fonts/Vulturemotor Demo.otf");
         label->getRenderer()->setFont(font);
         label->getRenderer()->setTextColor(tgui::Color(0,0,139));
-        panels["search_panel"]->add(label);
         
-
         panels["search_panel"]->getRenderer()->setBackgroundColor(sf::Color::White);
         panels["search_panel"]->setVisible(true);
 
@@ -315,48 +340,12 @@ public:
         panels["play_panel"] = init_panel;
 
 
-        auto music_button = return_Button("", 40, 40, 150, 20, panels["play_panel"], "music_img");
-        tgui::Texture m("background/music.png");
-        music_button->getRenderer()->setTexture(m);
-        music_button->getRenderer()->setBorderColor(tgui::Color::White);
-
-        auto song_label = tgui::Label::create("");
-        song_label->setTextSize(12);
-        song_label->setPosition(210, 30);
-        panels["play_panel"]->add(song_label, "song_label");
-
-        auto prev_button = return_Button("", 30, 30, 900, 20, panels["play_panel"], "prev");
-        tgui::Texture pr_im;
-        pr_im.load("background/back.png");
-        prev_button->getRenderer()->setTexture(pr_im);
-        pr_im.setDefaultSmooth(true);
-        prev_button->getRenderer()->setBorderColor(tgui::Color::White);
-        
-
-        auto play_button = return_Button("", 30, 30, 950, 20, panels["play_panel"], "play");
-        tgui::Texture p_im;
-        p_im.load("background/play1.png");
-        play_button->getRenderer()->setTexture(p_im);
-        play_button->getRenderer()->setBorderColor(tgui::Color::White);
-        p_im.setDefaultSmooth(true);
-        
-
-        auto next_button = return_Button("", 30, 30, 1000, 20, panels["play_panel"], "next");
-        tgui::Texture n_im;
-        n_im.load("background/next.png");
-        next_button->getRenderer()->setTexture(n_im);
-        next_button->getRenderer()->setBorderColor(tgui::Color::White);
-        n_im.setDefaultSmooth(true);
-        
-
-        auto progressBar = tgui::Slider::create();
-        progressBar->setPosition(700, 60);
-        progressBar->setSize(520, 10);
-        progressBar->setMinimum(0);
-        progressBar->setValue(0);
-        panels["play_panel"]->add(progressBar,"p_bar");
-        /*progressBar->getRenderer()->setThumbColor(tgui::Color::Blue);
-        progressBar->getRenderer()->setThumbColorHover(tgui::Color::Blue);*/
+        auto music_button = return_Button("",40, 40, 150, 20, panels["play_panel"], "music_img", "background/music.png");
+        auto song_label = return_Label("", 12, 210, 30, panels["play_panel"], "song_label");
+        auto prev_button = return_Button("", 30, 30, 900, 20, panels["play_panel"], "prev", "background/back.png");
+        auto play_button = return_Button("", 30, 30, 950, 20, panels["play_panel"], "play", "background/play1.png");
+        auto next_button = return_Button("", 30, 30, 1000, 20, panels["play_panel"], "next", "background/next.png");
+        auto progressBar = return_Slider(520,10,700,60,panels["play_panel"],"p_bar");
 
         progressBar->onMouseEnter([=]
             {
@@ -367,15 +356,8 @@ public:
                 
             });
 
-        auto sound_button = return_Button("", 30, 30, 1600, 50, panels["play_panel"], "sound");
-        tgui::Texture s_im;
-        s_im.load("background/volume.png");
-        sound_button->getRenderer()->setTexture(s_im);
-        sound_button->getRenderer()->setBorderColor(tgui::Color::White);
-        s_im.setDefaultSmooth(true);
-        
-
-        auto sBar = return_Slider("",100,10,1640,60,panels["play_panel"],"sound_bar");
+        auto sound_button = return_Button("", 30, 30, 1600, 50, panels["play_panel"], "sound", "background/volume.png");
+        auto sBar = return_Slider(100,10,1640,60,panels["play_panel"],"sound_bar");
         sBar->setValue(100);
         sBar->onValueChange([=]
             {
@@ -407,26 +389,18 @@ public:
         sc_panel->setPosition(0, 80);
         sc_panel->getRenderer()->setBackgroundColor(tgui::Color::White);
         panels["mid_panel_1"] = sc_panel;
-        auto label = tgui::Label::create("Genre");
-        label->setTextSize(30);
-        label->setPosition(600, 50);
-        panels["mid_panel_1"]->add(label);
+
+        auto label = return_Label("Genre",30,600,50,panels["mid_panel_1"],"genre_label","");
+     
         Player player;
         player.read_from_file("songs_set.csv");
         map<string, vector<Song>> list=player.get_genre();
         sc_panel->getVerticalScrollbar()->setValue(10);
-        tgui::Texture cd_img("background/cd.png");
         int j = 0;
         for (auto& i : list)
         {
-            auto button = return_Button("", 80, 80, 600 + (140 * j), 150, panels["mid_panel_1"], i.first);
-            auto label = tgui::Label::create(i.first);
-            label->setTextSize(20);
-            label->setPosition(580 + (150 * j), 250);
-            button->getRenderer()->setTexture(cd_img);
-            button->getRenderer()->setBorderColor(tgui::Color::White);
-            panels["mid_panel_1"]->add(label);
-            panels["mid_panel_1"]->add(button);
+            auto button = return_Button("", 80, 80, 600 + (140 * j), 150, panels["mid_panel_1"], i.first,"background/cd.png");
+            auto label = return_Label(i.first,20,580+(150*j),250,panels["mid_panel_1"]);
             j++;
 
             vector < Song > s1 = list[i.first];
@@ -480,20 +454,24 @@ public:
         p_bar->setMaximum(song.duration);
 
         auto button_1 = panels["play_panel"]->get<tgui::Button>("play");
-        /*tgui::Texture t1("background/pause.png");
+        tgui::Texture t1("background/pause1.jpg");
         button_1->getRenderer()->setTexture(t1);
-        tgui::Texture t2("background/play1.png");*/
+        button_1->setSize(40, 40);
+        button_1->setPosition(945, 15);
+        /*tgui::Texture t2("background/play1.png");
 
 
-        /*button_1->onPress([&] {
+        button_1->onPress([&t1,&t2,&button_1,this] {
             if (persistentPlayer->get_status())
             {
                 persistentPlayer->pause();
+                button_1->getRenderer()->setTexture(t2);
             }
                 
             else
             {
                 persistentPlayer->play();
+                button_1->getRenderer()->setTexture(t1);
             }
 
             });*/
@@ -510,7 +488,6 @@ public:
         g_panel->getRenderer()->setBackgroundColor(tgui::Color::White);
         panels[genre] = g_panel;
 
-        tgui::Texture cd_img("background/cd.png");
         int j = 0;
 
         for (auto i : g_songs)
@@ -521,28 +498,19 @@ public:
             int pos_x = 80 + (col * 150);
             int pos_y = 150 + (row * 150);
 
-            auto button = return_Button("", 80, 80, pos_x, pos_y, panels[genre], i.id);
-            button->getRenderer()->setTexture(cd_img);
-            button->getRenderer()->setBorderColor(tgui::Color::White);
+            auto button = return_Button("", 80, 80, pos_x, pos_y, panels[genre], i.id,"background/cd.png");
 
             button->onPress([=]
                 {
                     play_song(i);
                 });
 
-            auto label = tgui::Label::create(i.title);
-            label->setTextSize(13);
-            label->setPosition(pos_x, pos_y + 5 + 80);
+            auto label = return_Label(i.title,13,pos_x-5,pos_y+80,panels[genre]);
 
-            panels[genre]->add(label);
-            panels[genre]->add(button); 
             j++;
         }
         gui.add(panels[genre]);
-        auto back_button = return_Button("", 50, 50, 350, 50,panels["main_mid_panel"],"back - button");
-        tgui::Texture pr_im("background/back.png");
-        back_button->getRenderer()->setTexture(pr_im);
-        back_button->getRenderer()->setBorderColor(tgui::Color::White);
+        auto back_button = return_Button("", 50, 50, 350, 50, panels["main_mid_panel"], "back - button", "background/back.png");
         back_button->onPress([=]
             {
                 panels["main_mid_panel"]->setVisible(false);
