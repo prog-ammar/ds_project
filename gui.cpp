@@ -6,6 +6,7 @@
 #include <SFML/Window.hpp>
 #include <SFML/Audio.hpp>
 #include <SFML/System.hpp>
+#include <sstream>
 #include <mutex>
 #include <mpg123.h>
 #include <vector>
@@ -327,6 +328,8 @@ public:
 
         }*/
         auto p_bar = panels["play_panel"]->get<tgui::Slider>("p_bar");
+        auto label = panels["play_panel"]->get<tgui::Label>("time_label_1");
+
         while (window.isOpen())
         {
             while (const std::optional event = window.pollEvent())
@@ -342,13 +345,23 @@ public:
             {
                 if (clock.getElapsedTime().asSeconds() >= 1.0f)
                 {
+                    stringstream ss(label->getText().toStdString());
+                    string min;
+                    string sec;
+                    getline(ss, min, ':');
+                    getline(ss, sec, ':');
+                    int m = stoi(min);
+                    int s = stoi(sec);
+                    int v = (m * 60) + s + 1;
+                    string duration = to_string(v / 60) + ":" + to_string(v % 60);
+                    label->setText(duration);
                     if (p_bar->getValue() < p_bar->getMaximum())
                     {
                         p_bar->setValue(p_bar->getValue()+1.0f);
                     }
                     else
                     {
-                        persistentPlayer->pause();
+                        persistentPlayer->stop();
                     }
                     clock.restart();
                 }
@@ -428,7 +441,9 @@ public:
         auto prev_button = return_Button("", 30, 30, 900, 20, panels["play_panel"], "prev", "background/back.png");
         auto play_button = return_Button("", 30, 30, 950, 20, panels["play_panel"], "play", "background/play1.png");
         auto next_button = return_Button("", 30, 30, 1000, 20, panels["play_panel"], "next", "background/next.png");
+        auto time_label_1 = return_Label("-:-", 15, 650, 55, panels["play_panel"], "time_label_1");
         auto progressBar = return_Slider(520, 10, 700, 60, panels["play_panel"], "p_bar");
+        auto time_label_2 = return_Label("-:-", 15, 1230, 55, panels["play_panel"], "time_label_2");
 
         /*tgui::Texture t1("background/pause1.jpg");
         tgui::Texture t2("background/play1.png");
@@ -457,6 +472,9 @@ public:
                 progressBar->onValueChange([=]
                     {
                         persistentPlayer->seek(static_cast<double>(progressBar->getValue()));
+                        int v = progressBar->getValue();
+                        string duration = to_string(v / 60) + ":" + to_string(v % 60);
+                        time_label_1->setText(duration);
                     });
 
             });
@@ -541,6 +559,13 @@ public:
     void play_song(Song song)
     {
         auto song_label = panels["play_panel"]->get<tgui::Label>("song_label");
+        
+        auto label = panels["play_panel"]->get<tgui::Label>("time_label_1"); 
+        label->setText("00:00");
+        
+        string duration = to_string(song.duration / 60) + ":" + to_string(song.duration % 60);
+        label = panels["play_panel"]->get<tgui::Label>("time_label_2");
+        label->setText(duration);
 
         string file_path = "songs/" + song.id + ".mp3";
 
