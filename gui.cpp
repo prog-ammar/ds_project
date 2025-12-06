@@ -163,7 +163,7 @@ public:
 
     void play() { if (stream) stream->play(); change_status(); }
     void pause() { if (stream) stream->pause(); change_status(); }
-    void stop() { if (stream) stream->stop(); }
+    void stop() { if (stream) stream->stop(); change_status(); }
     void setVolume(float volume) { if (stream) stream->setVolume(volume); }
     void seek(double time) { sf::Time t= sf::seconds(time);if (stream) stream->onSeek(t); }
 
@@ -296,12 +296,13 @@ class UI_Functionality :public UI_Template
 private:
     std::unique_ptr<Mp3Player> persistentPlayer;
     RenderWindow window;
-
+    Player player;
 public:
 
     UI_Functionality()
     {
         persistentPlayer = std::make_unique<Mp3Player>();
+        player.read_from_file("songs_set_1.csv");
     }
     void init_window()
     {
@@ -445,7 +446,7 @@ public:
         auto progressBar = return_Slider(520, 10, 700, 60, panels["play_panel"], "p_bar");
         auto time_label_2 = return_Label("-:-", 15, 1230, 55, panels["play_panel"], "time_label_2");
 
-        /*tgui::Texture t1("background/pause1.jpg");
+        tgui::Texture t1("background/pause1.jpg");
         tgui::Texture t2("background/play1.png");
 
         play_button->onPress([=] {
@@ -465,7 +466,7 @@ public:
                 play_button->setPosition(945, 15);
             }
 
-            }); */
+            }); 
 
         progressBar->onMouseEnter([=]
             {
@@ -515,18 +516,24 @@ public:
 
         auto label = return_Label("Genre", 30, 600, 50, panels["mid_panel_1"], "genre_label", "");
 
-        Player player;
-        player.read_from_file("songs_set.csv");
-        map<string, vector<Song>> list = player.get_genre();
+        
+        map<string, vector<string>> list = player.get_genre();
         sc_panel->getVerticalScrollbar()->setValue(10);
         int j = 0;
         for (auto& i : list)
         {
-            auto button = return_Button("", 80, 80, 600 + (140 * j), 150, panels["mid_panel_1"], i.first, "background/cd.png");
-            auto label = return_Label(i.first, 20, 580 + (150 * j), 250, panels["mid_panel_1"]);
+            int col = j % 6;
+            int row = j / 6;
+
+            int pos_x = 600 + (col * 150);
+            int pos_y = 150 + (row * 150);
+
+            auto button = return_Button("", 80, 80, pos_x, pos_y, panels["mid_panel_1"], i.first, "background/cd.png");
+            auto label = return_Label(i.first, 20, pos_x+20, pos_y+100, panels["mid_panel_1"]);
+
             j++;
 
-            vector < Song > s1 = list[i.first];
+            vector < string > s1 = list[i.first];
             button->onPress([=]
                 {
                     panels["mid_panel_1"]->setVisible(false);
@@ -589,30 +596,9 @@ public:
         play_button->getRenderer()->setTexture(t1);
         play_button->setSize(40, 40);
         play_button->setPosition(945, 15);
-
-        tgui::Texture t2("background/play1.png");
-
-        play_button->onPress([=] {
-            if (persistentPlayer->get_status())
-            {
-                persistentPlayer->pause();
-                play_button->getRenderer()->setTexture(t2);
-                play_button->setSize(30, 30);
-                play_button->setPosition(950, 20);
-            }
-
-            else
-            {
-                persistentPlayer->play();
-                play_button->getRenderer()->setTexture(t1);
-                play_button->setSize(40, 40);
-                play_button->setPosition(945, 15);
-            }
-
-            });
     }
 
-    void make_mid_panels_of_each_genre(string genre, vector<Song> g_songs)
+    void make_mid_panels_of_each_genre(string genre, vector<string> g_songs)
     {
         panels["main_mid_panel"]->setVisible(true);
         auto g_panel = ScrollablePanel::create({ 1500.f,820.f });
@@ -630,14 +616,16 @@ public:
             int pos_x = 80 + (col * 150);
             int pos_y = 150 + (row * 150);
 
-            auto button = return_Button("", 80, 80, pos_x, pos_y, panels[genre], i.id, "background/cd.png");
+            Song s = player.get_song(i);
+
+            auto button = return_Button("", 80, 80, pos_x, pos_y, panels[genre], s.id, "background/cd.png");
 
             button->onPress([=]
                 {
-                    play_song(i);
+                    play_song(s);
                 });
 
-            auto label = return_Label(i.title, 13, pos_x - 5, pos_y + 80, panels[genre]);
+            auto label = return_Label(s.title, 13, pos_x - 5, pos_y + 80, panels[genre]);
 
             j++;
         }

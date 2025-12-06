@@ -6,6 +6,7 @@
 #include<math.h>
 #include<sstream>
 #include<fstream>
+#include<algorithm>
 
 using namespace std;
 
@@ -21,6 +22,11 @@ struct Song
     int duration;
     double accoust;
     double danceibility;
+
+    bool operator==(const Song& other) const
+    {
+        return other.id == id;
+    }
 
 };
 
@@ -110,8 +116,9 @@ class Player
 {
 private:
     map<string, Song> songs;
-    map<string, vector<Song>> playlists_by_genre;
-    map<string, vector<Song>> playlists_by_artist;
+    map<string, vector<string>> playlists_by_genre;
+    map<string, vector<string>> playlists_by_artist;
+    map<string, vector<string>> user_playlist;
     Recom_Graph graph;
 
 public:
@@ -131,7 +138,7 @@ public:
                 continue;
             }
             stringstream line(whole_line);
-            for (int i = 0;i < 10;i++)
+            for (int i = 0; i < 10; i++)
             {
                 getline(line, s_details[i], ',');
             }
@@ -145,19 +152,46 @@ public:
             song.duration = stoi(s_details[7]);
             song.accoust = stod(s_details[8]);
             song.danceibility = stod(s_details[9]);
-            playlists_by_genre[song.genre].push_back(song);
-            playlists_by_artist[song.artist].push_back(song);
+            playlists_by_genre[song.genre].push_back(song.id);
+            playlists_by_artist[song.artist].push_back(song.id);
             row++;
             songs[song.id] = song;
         }
     }
 
-    map<string,vector<Song>> get_genre()
+    void add_song(string playlist_name,string song_id)
+    {
+        if (find(user_playlist[playlist_name].begin(), user_playlist[playlist_name].end(), song_id) != user_playlist[playlist_name].end())
+        {
+            user_playlist[playlist_name].push_back(song_id);
+        }
+        
+        /*cout << "Song : " << song_to_add.title << " added to playlist " << playlist_name << " Successfully :) " << endl;*/
+    }
+
+    void remove_song(string playlist_name, string song_id)
+    {
+        if (user_playlist.count(playlist_name) == 0)
+        {
+            cout << "Sorry :( Playlist " << playlist_name << " does not exist" << endl;
+            return;
+        }
+
+        vector <string>& p = user_playlist[playlist_name];
+        p.erase(remove(p.begin(), p.end(), song_id), p.end());
+    }
+
+    Song get_song(string song_id)
+    {
+        return songs[song_id];
+    }
+
+    map<string, vector<string>> get_genre()
     {
         return playlists_by_genre;
     }
 
-    map<string, vector<Song>> get_artist()
+    map<string, vector<string>> get_artist()
     {
         return playlists_by_artist;
     }
@@ -169,16 +203,17 @@ public:
             cout << i.first << "\n\n";
             for (auto j : i.second)
             {
-                cout << "ID : " << j.id << endl;
-                cout << "Title : " << j.title << endl;
-                cout << "Artist : " << j.artist << endl;
-                cout << "Genre : " << j.genre << endl;
-                cout << "Loudness : " << j.loudness << endl;
-                cout << "Energy : " << j.energy << endl;
-                cout << "Tempo : " << j.tempo << endl;
-                cout << "Duration : " << j.duration << endl;
-                cout << "Accousti : " << j.accoust << endl;
-                cout << "Dancibility : " << j.danceibility << endl;
+                Song s = get_song(j);
+                cout << "ID : " << s.id << endl;
+                cout << "Title : " << s.title << endl;
+                cout << "Artist : " << s.artist << endl;
+                cout << "Genre : " << s.genre << endl;
+                cout << "Loudness : " << s.loudness << endl;
+                cout << "Energy : " << s.energy << endl;
+                cout << "Tempo : " << s.tempo << endl;
+                cout << "Duration : " << s.duration << endl;
+                cout << "Accousti : " << s.accoust << endl;
+                cout << "Dancibility : " << s.danceibility << endl;
                 cout << endl;
             }
         }
@@ -191,16 +226,17 @@ public:
             cout << i.first << "\n\n";
             for (auto j : i.second)
             {
-                cout << "ID : " << j.id << endl;
-                cout << "Title : " << j.title << endl;
-                cout << "Artist : " << j.artist << endl;
-                cout << "Genre : " << j.genre << endl;
-                cout << "Loudness : " << j.loudness << endl;
-                cout << "Energy : " << j.energy << endl;
-                cout << "Tempo : " << j.tempo << endl;
-                cout << "Duration : " << j.duration << endl;
-                cout << "Accousti : " << j.accoust << endl;
-                cout << "Dancibility : " << j.danceibility << endl;
+                Song s = get_song(j);
+                cout << "ID : " << s.id << endl;
+                cout << "Title : " << s.title << endl;
+                cout << "Artist : " << s.artist << endl;
+                cout << "Genre : " << s.genre << endl;
+                cout << "Loudness : " << s.loudness << endl;
+                cout << "Energy : " << s.energy << endl;
+                cout << "Tempo : " << s.tempo << endl;
+                cout << "Duration : " << s.duration << endl;
+                cout << "Accousti : " << s.accoust << endl;
+                cout << "Dancibility : " << s.danceibility << endl;
                 cout << endl;
             }
         }
@@ -259,7 +295,7 @@ public:
         double sqrA = 0;
         double sqrB = 0;
 
-        for (int i = 0;i < vectorA.size();i++)
+        for (int i = 0; i < vectorA.size(); i++)
         {
             dot_product += vectorA[i] * vectorB[i];
             sqrA += vectorA[i] * vectorA[i];
@@ -293,10 +329,10 @@ public:
 
 //int main()
 //{
-//    Player player;
-//    player.read_from_file("songs_set.csv");
-//    player.calculate_similarity_of_all_songs();
-//    player.print();
+//    Player player;
+//    player.read_from_file("songs_set.csv");
+//    player.calculate_similarity_of_all_songs();
+//    player.print();
 //
-//    // player.print_playlist_by_artist();
+//    // player.print_playlist_by_artist();
 //}
