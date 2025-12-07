@@ -21,8 +21,14 @@
     <ClCompile Include="gui.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="cpp gui.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="songs_set.csv" />
+    <None Include="songs_set_1.csv">
+      <Filter>Source Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

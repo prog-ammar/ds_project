@@ -426,12 +426,6 @@ public:
 
     }
 
-    void print()
-    {
-        cout << songs[graph.recommend("R01")].id << endl;
-        cout << songs[graph.recommend("R14")].id << endl;
-    }
-
     // New accessors for GUI usage
     const map<string, vector<string>>& get_user_playlists() const
     {

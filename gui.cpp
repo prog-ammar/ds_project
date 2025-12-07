@@ -172,7 +172,6 @@ class UI_Template
 {
 protected:
     map<string, Panel::Ptr> panels;
-    Gui gui;
 
 public:
 
@@ -259,6 +258,7 @@ public:
 class UI_Functionality :public UI_Template
 {
 private:
+    Gui gui;
     std::unique_ptr<Mp3Player> persistentPlayer;
     RenderWindow window;
     Player player;
@@ -274,22 +274,6 @@ public:
         player.read_from_file("songs_set_1.csv");
     }
 
-    // Add Create Playlist button to mid_panel_1 (not per-genre)
-    void addCreatePlaylistButton()
-    {
-        if (panels.count("mid_panel_1") == 0)
-            return;
-
-        auto mid = panels["mid_panel_1"];
-        // place top-left of mid panel
-        if (!mid->get< Button >("create_playlist_btn"))
-        {
-            auto btn = return_Button("Create Playlist", 180, 40, 30, 160, mid, "create_playlist_btn");
-            btn->onPress([this]() {
-                showCreatePlaylistPopup();
-            });
-        }
-    }
 
     void showCreatePlaylistPopup()
     {
@@ -415,20 +399,10 @@ public:
             // add playlist button to mid_panel_1 (playlist section)
             if (panels.count("mid_panel_1"))
             {
-                auto mid = panels["mid_panel_1"];
-                auto label = return_Label("Playlists", 30, 600, 350, panels["mid_panel_1"], "genre_label", "");
-                int pos_x = 580 + (userPlaylistCount % 6) * 150;
-                int pos_y = 500 + (userPlaylistCount / 6) * 120;
-                auto btn = return_Button("", 80, 80, pos_x, pos_y, panels["mid_panel_1"], "playlist_btn_" + playlistName, "background/cd.png");
-                btn->getRenderer()->setBorderColor(tgui::Color::White);
-                label = return_Label(playlistName, 20, pos_x + 20, pos_y + 100, panels["mid_panel_1"]);
-                btn->onPress([this, playlistName]() {
-                    make_mid_playlist_panels(playlistName);
-                    panels["mid_panel_1"]->setVisible(false);
-                    if (panels.count(playlistName)) panels[playlistName]->setVisible(true);
-                });
-
-                userPlaylistCount++;
+                gui.remove(panels["mid_panel_1"]);
+                panels.erase("mid_panel_1");
+                mid_panel_1();
+                panels["mid_panel_1"]->setVisible(true);
             }
 
             // persist playlists to file
@@ -443,7 +417,6 @@ public:
     });
 }
 
-    // highlight song across panels (genre panels and playlist panels)
     void highlightSong(const string &songId)
     {
         if (previousHighlightedId == songId) return;
@@ -520,29 +493,6 @@ public:
             });
     }
 
-    void make_playlist()
-    {
-        map < string, vector<string>> m= player.get_user_playlists();
-        auto mid = panels["mid_panel_1"];
-        auto label = return_Label("Playlists", 30, 600, 350, panels["mid_panel_1"], "genre_label", "");
-        int userPlaylistCount = 0;
-        for (auto& i : m)
-        {
-            string playlistName = i.first;
-            int pos_x = 600 + (userPlaylistCount % 6) * 150;
-            int pos_y = 450 + (userPlaylistCount / 6) * 120;
-            auto btn = return_Button("", 80, 80, pos_x, pos_y, panels["mid_panel_1"], "playlist_btn_" + playlistName, "background/cd.png");
-            btn->getRenderer()->setBorderColor(tgui::Color::White);
-            label = return_Label(playlistName, 16, pos_x + 5, pos_y + 90, panels["mid_panel_1"]);
-            btn->onPress([this, playlistName]() {
-                make_mid_playlist_panels(playlistName);
-                panels["mid_panel_1"]->setVisible(false);
-                if (panels.count(playlistName)) panels[playlistName]->setVisible(true);
-                });
-            userPlaylistCount++;
-        }
-    }
-
     void init_window()
     {
         window.create(VideoMode({ 1920,1080 }), "Smart Music Player");
@@ -554,9 +504,6 @@ public:
         float animation_time = 0.5f;
 
         UI_template_Maker();
-
-        // add Create Playlist button to mid_panel_1
-        addCreatePlaylistButton();
 
         auto p_bar = panels["play_panel"]->get<tgui::Slider>("p_bar");
         auto label = panels["play_panel"]->get<tgui::Label>("time_label_1");
@@ -603,17 +550,6 @@ public:
             window.display();
         }
         gui.removeAllWidgets();
-    }
-
-    void intro_panel()
-    {
-        auto init_panel = Panel::create({ "100%","100%" });
-        panels["Intro Menu"] = init_panel;
-
-        tgui::Texture background;
-        background.load("background/bck.png");
-        init_panel.get()->getRenderer()->setTextureBackground(background);
-        gui.add(init_panel);
     }
 
     void search_panel()
@@ -779,23 +715,31 @@ public:
     void main_mid_panel()
     {
 
-        auto sc_panel = ScrollablePanel::create({ 1920.f,820.f });
+        auto sc_panel = ScrollablePanel::create({ 420.f,820.f });
         sc_panel->setPosition(0, 80);
         sc_panel->getRenderer()->setBackgroundColor(tgui::Color::White);
         panels["main_mid_panel"] = sc_panel;
 
-        sc_panel->setVisible(false);
+        sc_panel->setVisible(true);
         gui.add(panels["main_mid_panel"]);
+
+        if (!sc_panel->get< Button >("create_playlist_btn"))
+        {
+            auto btn = return_Button("Create Playlist", 180, 40, 30, 160, sc_panel, "create_playlist_btn");
+            btn->onPress([this]() {
+                showCreatePlaylistPopup();
+                });
+        }
     }
 
     void mid_panel_1()
     {
-        auto sc_panel = ScrollablePanel::create({ 1920.f,820.f });
-        sc_panel->setPosition(0, 80);
+        auto sc_panel = ScrollablePanel::create({ 1500.f,820.f });
+        sc_panel->setPosition(420, 80);
         sc_panel->getRenderer()->setBackgroundColor(tgui::Color::White);
         panels["mid_panel_1"] = sc_panel;
 
-        auto label = return_Label("Genre", 30, 600, 50, panels["mid_panel_1"], "genre_label", "");
+        auto label = return_Label("Genre", 30, 150, 50, panels["mid_panel_1"], "genre_label", "");
 
 
         map<string, vector<string>> list = player.get_genre();
@@ -803,10 +747,10 @@ public:
         int j = 0;
         for (auto& i : list)
         {
-            int col = j % 6;
-            int row = j / 6;
+            int col = j % 5;
+            int row = j / 5;
 
-            int pos_x = 600 + (col * 150);
+            int pos_x = 150 + (col * 150);
             int pos_y = 150 + (row * 150);
 
             auto button = return_Button("", 80, 80, pos_x, pos_y, panels["mid_panel_1"], i.first, "background/cd.png");
@@ -820,6 +764,26 @@ public:
                     panels["mid_panel_1"]->setVisible(false);
                     make_mid_panels(i.first, s1);
                 });
+        }
+
+        map < string, vector<string>> m = player.get_user_playlists();
+        auto mid = panels["mid_panel_1"];
+        label = return_Label("Playlists", 30, 150, 350, panels["mid_panel_1"], "genre_label", "");
+        int userPlaylistCount = 0;
+        for (auto& i : m)
+        {
+            string playlistName = i.first;
+            int pos_x = 150 + (userPlaylistCount % 5) * 150;
+            int pos_y = 450 + (userPlaylistCount / 5) * 120;
+            auto btn = return_Button("", 80, 80, pos_x, pos_y, panels["mid_panel_1"], "playlist_btn_" + playlistName, "background/cd.png");
+            btn->getRenderer()->setBorderColor(tgui::Color::White);
+            label = return_Label(playlistName, 20, pos_x + 20, pos_y + 100, panels["mid_panel_1"]);
+            btn->onPress([this, playlistName]() {
+                make_mid_playlist_panels(playlistName);
+                panels["mid_panel_1"]->setVisible(false);
+                if (panels.count(playlistName)) panels[playlistName]->setVisible(true);
+                });
+            userPlaylistCount++;
         }
 
         gui.add(sc_panel);
@@ -864,13 +828,42 @@ public:
         play_button->setPosition(945, 15);
     }
 
+    void switch_back_to_main_panel(string s_panel_name)
+    {
+        Button::Ptr back_button;
+        if (!panels["main_mid_panel"]->get<Button>("back - button"))
+        {
+           back_button = return_Button("", 50, 50, 350, 50, panels["main_mid_panel"], "back - button", "background/back.png");
+        }
+        else
+        {
+            back_button = panels["main_mid_panel"]->get<Button>("back - button");
+        }
+
+        back_button->setVisible(true);
+        
+        back_button->onPress([=]
+            {
+                gui.remove(panels[s_panel_name]);
+                panels.erase(s_panel_name);
+                panels["mid_panel_1"]->setVisible(true);
+            });
+    }
+
     void make_mid_panels(string s_panel_name, vector<string> songs)
     {
         panels["main_mid_panel"]->setVisible(true);
+        panels["mid_panel_1"]->setVisible(false);
         auto g_panel = ScrollablePanel::create({ 1500.f,820.f });
         g_panel->setPosition(420, 80);
         g_panel->getRenderer()->setBackgroundColor(tgui::Color::White);
         panels[s_panel_name] = g_panel;
+
+        if (songs.empty())
+        {
+            auto label = return_Label("No Songs Found", 30, 200, 200, g_panel);
+            return;
+        }
 
         int j = 0;
 
@@ -891,19 +884,13 @@ public:
                     play_song(s);
                 });
 
+            switch_back_to_main_panel(s_panel_name);
             auto label = return_Label(s.title, 13, pos_x - 5, pos_y + 80, panels[s_panel_name]);
 
             j++;
         }
         gui.add(panels[s_panel_name]);
-        auto back_button = return_Button("", 50, 50, 350, 50, panels["main_mid_panel"], "back - button", "background/back.png");
-        back_button->onPress([=]
-            {
-                panels["main_mid_panel"]->setVisible(false);
-                panels[s_panel_name]->setVisible(false);
-                panels["mid_panel_1"]->setVisible(true);
-
-            });
+        
 
     }
 
@@ -913,7 +900,6 @@ public:
         play_panel();
         main_mid_panel();
         mid_panel_1();
-        make_playlist();
     }
 };
 
