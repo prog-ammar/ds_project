@@ -30,12 +30,10 @@ struct Song
 
 };
 
-
 inline double normalize_value(double min_v, double max_v, double v)
 {
     return (v - min_v) / (max_v - min_v);
 }
-
 
 struct Vertice
 {
@@ -110,7 +108,47 @@ public:
     }
 };
 
+struct trienode {
+    map<char, trienode*> children;
+    vector<string> song_ids;
+    bool is_end = false;
+};
 
+class tire {
+private:
+    trienode* root;
+
+public:
+    tire() {
+        root = new trienode();
+    }
+
+    // Insert a song title into the trie
+    void insert(const string& song_title, const string& song_id) {
+        trienode* node = root;
+        for (char c : song_title) {
+            c = tolower(c); // make search case-insensitive
+            if (!node->children.count(c)) {
+                node->children[c] = new trienode();
+            }
+            node = node->children[c];
+            node->song_ids.push_back(song_id); // store song ID at every prefix
+        }
+        node->is_end = true;
+    }
+
+    // Search songs by prefix
+    vector<string> search(const string& prefix) {
+        trienode* node = root;
+        for (char c : prefix) {
+            c = tolower(c);
+            if (!node->children.count(c))
+                return {}; // no match
+            node = node->children[c];
+        }
+        return node->song_ids; // all songs with this prefix
+    }
+};
 
 class Player
 {
@@ -121,7 +159,78 @@ private:
     map<string, vector<string>> user_playlist;
     Recom_Graph graph;
 
+    tire song_trie;
+
+
+    void build_trie()
+    {
+        for (auto& s : songs)
+        {
+            string formatted_title = s.second.title;
+            replace(formatted_title.begin(), formatted_title.end(), '_', ' ');
+            song_trie.insert(formatted_title, s.second.id);
+        }
+    }
+
+    void initialize_search()
+    {
+        build_trie();
+    }
+
 public:
+
+    Player()
+    {
+        read_from_file("songs_set_1.csv");
+        read_user_playlist("user_playlists.csv");
+        build_trie();
+    }
+
+    void read_user_playlist(string filename)
+    {
+        ifstream file(filename);
+        string wholeline;
+        int row = 0;
+        string p_name = "";
+        string s_name = "";
+        while (getline(file, wholeline))
+        {
+            if (row == 0)
+            {
+                row++;
+                continue;
+            }
+
+            stringstream line(wholeline);
+            getline(line, p_name, ',');
+            while (getline(line, s_name, ','))
+            {
+                if (!s_name.empty())
+                    user_playlist[p_name].push_back(s_name);
+            }
+            row++;
+        }
+        file.close();
+    }
+
+
+
+    void write_user_playlist(string filename)
+    {
+        ofstream file(filename);
+        file << "Playlist Name" << "," << "Songs IDs" << "\n";
+        for (auto& i : user_playlist)
+        {
+            file << i.first << ",";
+            for (auto& j : i.second)
+            {
+                file << j << ",";
+            }
+            file << "\n";
+        }
+        file.close();
+    }
+
     void read_from_file(string filename)
     {
         ifstream file;
@@ -157,16 +266,15 @@ public:
             row++;
             songs[song.id] = song;
         }
+        file.close();
     }
 
-    void add_song(string playlist_name,string song_id)
+    void add_song(string playlist_name, string song_id)
     {
-        if (find(user_playlist[playlist_name].begin(), user_playlist[playlist_name].end(), song_id) != user_playlist[playlist_name].end())
+        if (find(user_playlist[playlist_name].begin(), user_playlist[playlist_name].end(), song_id) == user_playlist[playlist_name].end())
         {
             user_playlist[playlist_name].push_back(song_id);
         }
-        
-        /*cout << "Song : " << song_to_add.title << " added to playlist " << playlist_name << " Successfully :) " << endl;*/
     }
 
     void remove_song(string playlist_name, string song_id)
@@ -318,21 +426,48 @@ public:
 
     }
 
-
     void print()
     {
         cout << songs[graph.recommend("R01")].id << endl;
         cout << songs[graph.recommend("R14")].id << endl;
     }
 
+    // New accessors for GUI usage
+    const map<string, vector<string>>& get_user_playlists() const
+    {
+        return user_playlist;
+    }
+
+    vector<string> get_user_playlist(const string& name) const
+    {
+        auto it = user_playlist.find(name);
+        if (it != user_playlist.end())
+            return it->second;
+        return {};
+    }
+
+    // Add a convenience to create an empty playlist (no-op if exists)
+    void create_playlist(const string& name)
+    {
+        if (user_playlist.find(name) == user_playlist.end())
+            user_playlist[name] = {};
+    }
+
+    // Delete playlist from map and persist change to file
+    void delete_playlist(const string& name)
+    {
+        // erase from in-memory map
+        auto erased = user_playlist.erase(name);
+
+        // rewrite backing file to reflect change regardless of whether key existed
+        write_user_playlist("user_playlists.csv");
+    }
+
+    vector<string> search_songs_by_prefix(const string& prefix) {
+        vector<string> ids = song_trie.search(prefix);
+        return ids;
+    }
+
+
 };
 
-//int main()
-//{
-//    Player player;
-//    player.read_from_file("songs_set.csv");
-//    player.calculate_similarity_of_all_songs();
-//    player.print();
-//
-//    // player.print_playlist_by_artist();
-//}
