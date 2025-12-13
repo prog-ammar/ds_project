@@ -529,26 +529,58 @@ public:
         new_node->prev = tail;
         head = new_node;
     }
+
+
+    bool isEmpty()
+    {
+        return head == NULL && tail == NULL;
+    }
+
+    void Clear()
+    {
+        Node* temp = head;
+        do
+        {
+            Node* temp1 = temp->next;
+            delete temp;
+            temp = temp1;
+        } while (temp != tail);
+        delete temp;
+        head = tail = NULL;
+    }
     
     string start_curr()
     {
         if (head != NULL)
         {
             curr = head;
+            return curr->song_id;
         }
-        return curr->song_id;
+        cout << "Error : No Playlist is initialized\n";
+        return "";
     }
 
     string move_curr_front()
     {
-        curr = curr->next;
-        return curr->song_id;
+        if (!isEmpty())
+        {
+            curr = curr->next;
+            return curr->song_id;
+        }
+        cout << "Error : Playlist is Empty\n";
+        return "";
+        
     }
 
     string move_curr_back()
     {
-        curr = curr->prev;
-        return curr->song_id;
+        if (!isEmpty())
+        {
+            curr = curr->prev;
+            return curr->song_id;
+        }
+        cout << "Error : Playlist is Empty\n";
+        return "";
     }
 
 };

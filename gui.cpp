@@ -146,11 +146,11 @@ class Mp3Player
 private:
     std::unique_ptr<Mp3Stream> stream;
     float durationSeconds = 0.f;
-    bool is_playing = false;
+    
 public:
     Mp3Player() {}
 
-    bool get_status() const { return is_playing; }
+    bool get_status() const { return (stream && stream->getStatus() == sf::SoundSource::Status::Playing); }
 
     bool open(const std::string& filename)
     {
@@ -160,9 +160,9 @@ public:
         return true;
     }
 
-    void play()  { if (stream) stream->play();  is_playing = true;  }
-    void pause() { if (stream) stream->pause(); is_playing = false; }
-    void stop()  { if (stream) stream->stop();  is_playing = false; }
+    void play()  { if (stream) stream->play();   }
+    void pause() { if (stream) stream->pause();  }
+    void stop()  { if (stream) stream->stop();   }
     void setVolume(float volume) { if (stream) stream->setVolume(volume); }
     void seek(double time) { sf::Time t = sf::seconds(time); if (stream) stream->onSeek(t); }
 
@@ -466,7 +466,7 @@ public:
         Panel::Ptr g_panel = panels[playlistName];
 
         auto del = Button::create("Delete Playlist");
-        del->setPosition(350, 50);
+        del->setPosition(420, 50);
         del->setSize(150, 40);
         g_panel->add(del, "delete_playlist_btn_" + playlistName);
 
@@ -474,24 +474,14 @@ public:
             // remove from player (map + persist)
             player.delete_playlist(playlistName);
             player.write_user_playlist("user_playlists.csv");
-
-            // remove button from mid_panel_1 by pointer (safe)
-            if (panels.count("mid_panel_1"))
-            {
-                try {
-                    auto btnPtr = panels["mid_panel_1"]->get<tgui::Button>("playlist_btn_" + playlistName);
-                    if (btnPtr)
-                        panels["mid_panel_1"]->remove(btnPtr);
-                }
-                catch (...) {}
-            }
-            // remove playlist panel
-            if (panels.count(playlistName))
-            {
-                gui.remove(panels[playlistName]);
-                panels.erase(playlistName);
-            }
-            // show mid panel
+            playlist_tracker.Clear();
+            persistentPlayer->stop();
+            persistentPlayer->pause();
+            gui.remove(panels[playlistName]);
+            panels.erase(playlistName);
+            gui.remove(panels["mid_panel_1"]);
+            panels.erase("mid_panel_1");
+            mid_panel_1();
             if (panels.count("mid_panel_1")) panels["mid_panel_1"]->setVisible(true);
             });
     }
@@ -542,7 +532,13 @@ public:
                     }
                     else
                     {
-                        persistentPlayer->stop();
+                        if (playlist_tracker.isEmpty())
+                            persistentPlayer->stop();
+                        else
+                        {
+                            persistentPlayer->stop();
+                            play_song(player.get_song(playlist_tracker.move_curr_front()));
+                        }
                     }
                     clock.restart();
                 }
@@ -690,14 +686,23 @@ public:
 
         prev_button->onPress([=]
             {
-                play_song(player.get_song(playlist_tracker.move_curr_back()));
+                string song_id = playlist_tracker.move_curr_back();
+                if (song_id != "")
+                {
+                    Song song = player.get_song(song_id);
+                    play_song(song);
+                }
             });
 
         next_button->onPress([=]
             {
-                play_song(player.get_song(playlist_tracker.move_curr_front()));
+                string song_id = playlist_tracker.move_curr_front();
+                if (song_id != "")
+                {
+                    Song song = player.get_song(song_id);
+                    play_song(song);
+                }
             });
-
 
         progressBar->onMouseEnter([=]
             {
@@ -869,8 +874,9 @@ public:
             {
                /* gui.remove(panels[s_panel_name]);
                 panels.erase(s_panel_name);*/
-                panels["search"]->setVisible(false);
+                /*panels["search"]->setVisible(false);*/
                 panels["mid_panel_1"]->setVisible(true);
+                panels[s_panel_name]->setVisible(false);
             });
     }
 
@@ -878,42 +884,51 @@ public:
     {
         panels["main_mid_panel"]->setVisible(true);
         panels["mid_panel_1"]->setVisible(false);
-        auto g_panel = ScrollablePanel::create({ 1500.f,820.f });
-        g_panel->setPosition(420, 80);
-        g_panel->getRenderer()->setBackgroundColor(tgui::Color::White);
-        panels[s_panel_name] = g_panel;
 
-        if (songs.empty())
+        if (panels.count(s_panel_name) == 0)
         {
-            auto label = return_Label("No Songs Found", 30, 200, 200, g_panel);
-            return;
+            auto g_panel = ScrollablePanel::create({ 1500.f,820.f });
+            g_panel->setPosition(420, 80);
+            g_panel->getRenderer()->setBackgroundColor(tgui::Color::White);
+            panels[s_panel_name] = g_panel;
+
+            if (songs.empty())
+            {
+                auto label = return_Label("No Songs Found", 30, 200, 200, g_panel);
+                return;
+            }
+
+            int j = 0;
+
+            for (auto i : songs)
+            {
+                int col = j % 6;
+                int row = j / 6;
+
+                int pos_x = 80 + (col * 150);
+                int pos_y = 150 + (row * 150);
+
+                Song s = player.get_song(i);
+
+                auto button = return_Button("", 80, 80, pos_x, pos_y, panels[s_panel_name], s.id, "background/cd.png");
+
+                button->onPress([=]
+                    {
+                        play_song(s);
+                    });
+
+                switch_back_to_main_panel(s_panel_name);
+                auto label = return_Label(s.title, 13, pos_x - 5, pos_y + 80, panels[s_panel_name]);
+
+                j++;
+            }
+            gui.add(panels[s_panel_name]);
         }
-
-        int j = 0;
-
-        for (auto i : songs)
+        
+        else
         {
-            int col = j % 6;
-            int row = j / 6;
-
-            int pos_x = 80 + (col * 150);
-            int pos_y = 150 + (row * 150);
-
-            Song s = player.get_song(i);
-
-            auto button = return_Button("", 80, 80, pos_x, pos_y, panels[s_panel_name], s.id, "background/cd.png");
-
-            button->onPress([=]
-                {
-                    play_song(s);
-                });
-
-            switch_back_to_main_panel(s_panel_name);
-            auto label = return_Label(s.title, 13, pos_x - 5, pos_y + 80, panels[s_panel_name]);
-
-            j++;
+            panels[s_panel_name]->setVisible(true);
         }
-        gui.add(panels[s_panel_name]);
         
 
     }
