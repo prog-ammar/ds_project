@@ -11,6 +11,8 @@
 #include <mpg123.h>
 #include <vector>
 #include <memory>
+#include <queue>
+#include <stack>
 #include "backup.cpp"
 
 using namespace std;
@@ -265,6 +267,7 @@ private:
     size_t userPlaylistCount = 0;
     string currentPlayingSongId;
     string previousHighlightedId;
+    Circular_Doubly_Linked_List playlist_tracker;
 
 public:
 
@@ -685,6 +688,17 @@ public:
 
             });
 
+        prev_button->onPress([=]
+            {
+                play_song(player.get_song(playlist_tracker.move_curr_back()));
+            });
+
+        next_button->onPress([=]
+            {
+                play_song(player.get_song(playlist_tracker.move_curr_front()));
+            });
+
+
         progressBar->onMouseEnter([=]
             {
                 progressBar->onValueChange([=]
@@ -730,6 +744,14 @@ public:
                 showCreatePlaylistPopup();
                 });
         }
+    }
+
+    void play_playlist(vector<string> playlist)
+    {
+        for (auto& i : playlist)
+            playlist_tracker.add_song_at_tail(i);
+        Song curr = player.get_song(playlist_tracker.start_curr());
+        play_song(curr);
     }
 
     void mid_panel_1()
@@ -782,6 +804,7 @@ public:
                 make_mid_playlist_panels(playlistName);
                 panels["mid_panel_1"]->setVisible(false);
                 if (panels.count(playlistName)) panels[playlistName]->setVisible(true);
+                play_playlist(player.get_user_playlist(playlistName));
                 });
             userPlaylistCount++;
         }
@@ -844,8 +867,9 @@ public:
         
         back_button->onPress([=]
             {
-                gui.remove(panels[s_panel_name]);
-                panels.erase(s_panel_name);
+               /* gui.remove(panels[s_panel_name]);
+                panels.erase(s_panel_name);*/
+                panels["search"]->setVisible(false);
                 panels["mid_panel_1"]->setVisible(true);
             });
     }

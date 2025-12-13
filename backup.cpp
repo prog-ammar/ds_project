@@ -465,3 +465,91 @@ public:
 
 };
 
+struct Node
+{
+    Node* next;
+    Node* prev;
+    string song_id;
+
+     Node(string song_id)
+    {
+        this->next = NULL;
+        this->prev = NULL;
+        this->song_id = song_id;
+    }
+};
+
+class Circular_Doubly_Linked_List
+{
+private:
+    Node* head;
+    Node* tail;
+    Node* curr;
+
+public:
+    Circular_Doubly_Linked_List()
+    {
+        head = tail = curr = NULL;
+    }
+
+    void add_song_at_tail(string song_id)
+    {
+        Node* new_node = new Node(song_id);
+        if (head == NULL && tail == NULL)
+        {
+            tail = new_node;
+            head = tail;
+            head->next = tail;
+            tail->prev = head;
+
+            return;
+        }
+        new_node->prev = tail;
+        tail->next = new_node;
+        new_node->next = head;
+        head->prev = new_node;
+        tail = new_node;
+    }
+
+    void add_song_at_head(string song_id)
+    {
+        Node* new_node = new Node(song_id);
+        if (head == NULL && tail == NULL)
+        {
+            tail = new_node;
+            head = tail;
+            head->next = tail;
+            tail->prev = head;
+            return;
+        }
+
+        new_node->next = head;
+        head->prev = new_node;
+        tail->next = new_node;
+        new_node->prev = tail;
+        head = new_node;
+    }
+    
+    string start_curr()
+    {
+        if (head != NULL)
+        {
+            curr = head;
+        }
+        return curr->song_id;
+    }
+
+    string move_curr_front()
+    {
+        curr = curr->next;
+        return curr->song_id;
+    }
+
+    string move_curr_back()
+    {
+        curr = curr->prev;
+        return curr->song_id;
+    }
+
+};
+
