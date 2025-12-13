@@ -538,6 +538,7 @@ public:
 
     void Clear()
     {
+        if (isEmpty()) return;
         Node* temp = head;
         do
         {
@@ -585,6 +586,4 @@ public:
 
 };
 
-
-kesa hy qazi
 

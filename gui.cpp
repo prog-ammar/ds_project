@@ -809,6 +809,7 @@ public:
                 make_mid_playlist_panels(playlistName);
                 panels["mid_panel_1"]->setVisible(false);
                 if (panels.count(playlistName)) panels[playlistName]->setVisible(true);
+                playlist_tracker.Clear();
                 play_playlist(player.get_user_playlist(playlistName));
                 });
             userPlaylistCount++;
