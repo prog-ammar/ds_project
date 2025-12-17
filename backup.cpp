@@ -30,6 +30,20 @@ struct Song
 
 };
 
+struct Node
+{
+    Node* next;
+    Node* prev;
+    string song_id;
+
+    Node(string song_id)
+    {
+        this->next = NULL;
+        this->prev = NULL;
+        this->song_id = song_id;
+    }
+};
+
 inline double normalize_value(double min_v, double max_v, double v)
 {
     return (v - min_v) / (max_v - min_v);
@@ -150,15 +164,145 @@ public:
     }
 };
 
+
+class Circular_Doubly_Linked_List
+{
+private:
+    Node* head;
+    Node* tail;
+    Node* curr;
+
+public:
+    Circular_Doubly_Linked_List()
+    {
+        head = tail = curr = NULL;
+    }
+
+    void add_song_at_tail(string song_id)
+    {
+        Node* new_node = new Node(song_id);
+        if (head == NULL && tail == NULL)
+        {
+            tail = new_node;
+            head = tail;
+            head->next = tail;
+            tail->prev = head;
+
+            return;
+        }
+        new_node->prev = tail;
+        tail->next = new_node;
+        new_node->next = head;
+        head->prev = new_node;
+        tail = new_node;
+    }
+
+    string get_curr()
+    {
+        return curr->song_id;
+    }
+
+    void add_song_at_curr(string song_id)
+    {
+        Node* new_node = new Node(song_id);
+        if (head == NULL && tail == NULL)
+        {
+            tail = new_node;
+            head = tail;
+            head->next = tail;
+            tail->prev = head;
+            return;
+        }
+        new_node->next = curr->next;
+        new_node->next->prev = new_node;
+        curr->next = new_node;
+        new_node->prev = curr;
+    }
+
+    void add_song_at_head(string song_id)
+    {
+        Node* new_node = new Node(song_id);
+        if (head == NULL && tail == NULL)
+        {
+            tail = new_node;
+            head = tail;
+            head->next = tail;
+            tail->prev = head;
+            return;
+        }
+
+        new_node->next = head;
+        head->prev = new_node;
+        tail->next = new_node;
+        new_node->prev = tail;
+        head = new_node;
+    }
+
+
+    bool isEmpty()
+    {
+        return head == NULL && tail == NULL;
+    }
+
+    void Clear()
+    {
+        if (isEmpty()) return;
+        Node* temp = head;
+        do
+        {
+            Node* temp1 = temp->next;
+            delete temp;
+            temp = temp1;
+        } while (temp != tail);
+        delete temp;
+        head = tail = NULL;
+    }
+
+    string start_curr()
+    {
+        if (head != NULL)
+        {
+            curr = head;
+            return curr->song_id;
+        }
+        cout << "Error : No Playlist is initialized\n";
+        return "";
+    }
+
+    string move_curr_front()
+    {
+        if (!isEmpty())
+        {
+            curr = curr->next;
+            return curr->song_id;
+        }
+        cout << "Error : Playlist is Empty\n";
+        return "";
+
+    }
+
+    string move_curr_back()
+    {
+        if (!isEmpty())
+        {
+            curr = curr->prev;
+            return curr->song_id;
+        }
+        cout << "Error : Playlist is Empty\n";
+        return "";
+    }
+
+};
+
 class Player
 {
 private:
     map<string, Song> songs;
     map<string, vector<string>> playlists_by_genre;
     map<string, vector<string>> playlists_by_artist;
-    map<string, vector<string>> user_playlist;
+    map<string, vector<string>> user_playlists;
+    Circular_Doubly_Linked_List curr_playlist_manager;
     Recom_Graph graph;
-
     tire song_trie;
 
 
@@ -186,6 +330,41 @@ public:
         build_trie();
     }
 
+    void add_song_to_current_playlist(string id)
+    {
+        curr_playlist_manager.add_song_at_tail(id);
+    }
+
+    void add_current_playlist_at_once(vector<string> ids)
+    {
+        for (auto& i : ids)
+            curr_playlist_manager.add_song_at_tail(i);
+    }
+    void clear_current_playlist()
+    {
+        curr_playlist_manager.Clear();
+    }
+
+    string play_next_song_of_current_playlist()
+    {
+        return curr_playlist_manager.move_curr_front();
+    }
+    
+    bool any_playlist_playing()
+    {
+        return curr_playlist_manager.isEmpty();
+    }
+
+    string play_prev_song_of_current_playlist()
+    {
+        return curr_playlist_manager.move_curr_back();
+    }
+
+    string recommend_song_regarding_to_current_song()
+    {
+        return graph.recommend(curr_playlist_manager.get_curr());
+    }
+
     void read_user_playlist(string filename)
     {
         ifstream file(filename);
@@ -206,7 +385,7 @@ public:
             while (getline(line, s_name, ','))
             {
                 if (!s_name.empty())
-                    user_playlist[p_name].push_back(s_name);
+                    user_playlists[p_name].push_back(s_name);
             }
             row++;
         }
@@ -219,7 +398,7 @@ public:
     {
         ofstream file(filename);
         file << "Playlist Name" << "," << "Songs IDs" << "\n";
-        for (auto& i : user_playlist)
+        for (auto& i : user_playlists)
         {
             file << i.first << ",";
             for (auto& j : i.second)
@@ -269,23 +448,23 @@ public:
         file.close();
     }
 
-    void add_song(string playlist_name, string song_id)
+    void add_song_to_user_playlist(string playlist_name, string song_id)
     {
-        if (find(user_playlist[playlist_name].begin(), user_playlist[playlist_name].end(), song_id) == user_playlist[playlist_name].end())
+        if (find(user_playlists[playlist_name].begin(), user_playlists[playlist_name].end(), song_id) == user_playlists[playlist_name].end())
         {
-            user_playlist[playlist_name].push_back(song_id);
+            user_playlists[playlist_name].push_back(song_id);
         }
     }
 
-    void remove_song(string playlist_name, string song_id)
+    void remove_song_from_user_playlist(string playlist_name, string song_id)
     {
-        if (user_playlist.count(playlist_name) == 0)
+        if (user_playlists.count(playlist_name) == 0)
         {
             cout << "Sorry :( Playlist " << playlist_name << " does not exist" << endl;
             return;
         }
 
-        vector <string>& p = user_playlist[playlist_name];
+        vector <string>& p = user_playlists[playlist_name];
         p.erase(remove(p.begin(), p.end(), song_id), p.end());
     }
 
@@ -429,29 +608,29 @@ public:
     // New accessors for GUI usage
     const map<string, vector<string>>& get_user_playlists() const
     {
-        return user_playlist;
+        return user_playlists;
     }
 
     vector<string> get_user_playlist(const string& name) const
     {
-        auto it = user_playlist.find(name);
-        if (it != user_playlist.end())
+        auto it = user_playlists.find(name);
+        if (it != user_playlists.end())
             return it->second;
         return {};
     }
 
     // Add a convenience to create an empty playlist (no-op if exists)
-    void create_playlist(const string& name)
+    void create_user_playlist(const string& name)
     {
-        if (user_playlist.find(name) == user_playlist.end())
-            user_playlist[name] = {};
+        if (user_playlists.find(name) == user_playlists.end())
+            user_playlists[name] = {};
     }
 
     // Delete playlist from map and persist change to file
-    void delete_playlist(const string& name)
+    void delete_user_playlist(const string& name)
     {
         // erase from in-memory map
-        auto erased = user_playlist.erase(name);
+        auto erased = user_playlists.erase(name);
 
         // rewrite backing file to reflect change regardless of whether key existed
         write_user_playlist("user_playlists.csv");
@@ -465,142 +644,8 @@ public:
 
 };
 
-struct Node
-{
-    Node* next;
-    Node* prev;
-    string song_id;
-
-     Node(string song_id)
-    {
-        this->next = NULL;
-        this->prev = NULL;
-        this->song_id = song_id;
-    }
-};
-
-class Circular_Doubly_Linked_List
-{
-private:
-    Node* head;
-    Node* tail;
-    Node* curr;
-
-public:
-    Circular_Doubly_Linked_List()
-    {
-        head = tail = curr = NULL;
-    }
-
-    void add_song_at_tail(string song_id)
-    {
-        Node* new_node = new Node(song_id);
-        if (head == NULL && tail == NULL)
-        {
-            tail = new_node;
-            head = tail;
-            head->next = tail;
-            tail->prev = head;
-
-            return;
-        }
-        new_node->prev = tail;
-        tail->next = new_node;
-        new_node->next = head;
-        head->prev = new_node;
-        tail = new_node;
-    }
-
-    void add_song_at_curr(string song_id)
-    {
-        Node* new_node = new Node(song_id);
-        if (head == NULL && tail == NULL)
-        {
-            tail = new_node;
-            head = tail;
-            head->next = tail;
-            tail->prev = head;
-            return;
-        }
-        new_node->next = curr->next;
-        new_node->next->prev = new_node;
-        curr->next = new_node;
-        new_node->prev = curr;
-    }
-
-    void add_song_at_head(string song_id)
-    {
-        Node* new_node = new Node(song_id);
-        if (head == NULL && tail == NULL)
-        {
-            tail = new_node;
-            head = tail;
-            head->next = tail;
-            tail->prev = head;
-            return;
-        }
-
-        new_node->next = head;
-        head->prev = new_node;
-        tail->next = new_node;
-        new_node->prev = tail;
-        head = new_node;
-    }
 
 
-    bool isEmpty()
-    {
-        return head == NULL && tail == NULL;
-    }
 
-    void Clear()
-    {
-        if (isEmpty()) return;
-        Node* temp = head;
-        do
-        {
-            Node* temp1 = temp->next;
-            delete temp;
-            temp = temp1;
-        } while (temp != tail);
-        delete temp;
-        head = tail = NULL;
-    }
-    
-    string start_curr()
-    {
-        if (head != NULL)
-        {
-            curr = head;
-            return curr->song_id;
-        }
-        cout << "Error : No Playlist is initialized\n";
-        return "";
-    }
-
-    string move_curr_front()
-    {
-        if (!isEmpty())
-        {
-            curr = curr->next;
-            return curr->song_id;
-        }
-        cout << "Error : Playlist is Empty\n";
-        return "";
-        
-    }
-
-    string move_curr_back()
-    {
-        if (!isEmpty())
-        {
-            curr = curr->prev;
-            return curr->song_id;
-        }
-        cout << "Error : Playlist is Empty\n";
-        return "";
-    }
-
-};
 
 

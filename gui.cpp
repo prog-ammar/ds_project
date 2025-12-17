@@ -270,7 +270,6 @@ private:
     size_t userPlaylistCount = 0;
     string currentPlayingSongId;
     string previousHighlightedId;
-    Circular_Doubly_Linked_List playlist_tracker;
 
 public:
 
@@ -329,7 +328,7 @@ public:
                 return;
             }
             // create playlist in Player
-            player.create_playlist(name);
+            player.create_user_playlist(name);
 
             // remove popup cleanly
             popup->setVisible(false);
@@ -397,7 +396,7 @@ public:
                     if (name.rfind("chk_", 0) == 0)
                     {
                         std::string sid = name.substr(4);
-                        player.add_song(playlistName, sid);
+                        player.add_song_to_user_playlist(playlistName, sid);
                     }
                 }
             }
@@ -475,9 +474,9 @@ public:
 
         del->onPress([this, playlistName]() {
             // remove from player (map + persist)
-            player.delete_playlist(playlistName);
+            player.delete_user_playlist(playlistName);
             player.write_user_playlist("user_playlists.csv");
-            playlist_tracker.Clear();
+            player.clear_current_playlist();
             persistentPlayer->stop();
             persistentPlayer->pause();
             gui.remove(panels[playlistName]);
@@ -535,12 +534,12 @@ public:
                     }
                     else
                     {
-                        if (playlist_tracker.isEmpty())
+                        if (player.any_playlist_playing())
                             persistentPlayer->stop();
                         else
                         {
                             persistentPlayer->stop();
-                            play_song(player.get_song(playlist_tracker.move_curr_front()));
+                            play_song(player.get_song(player.play_next_song_of_current_playlist()));
                         }
                     }
                     clock.restart();
@@ -689,7 +688,7 @@ public:
 
         prev_button->onPress([=]
             {
-                string song_id = playlist_tracker.move_curr_back();
+                string song_id = player.play_prev_song_of_current_playlist();
                 if (song_id != "")
                 {
                     Song song = player.get_song(song_id);
@@ -699,7 +698,7 @@ public:
 
         next_button->onPress([=]
             {
-                string song_id = playlist_tracker.move_curr_front();
+                string song_id = player.play_next_song_of_current_playlist();
                 if (song_id != "")
                 {
                     Song song = player.get_song(song_id);
@@ -794,10 +793,9 @@ public:
 
     void play_playlist(vector<string> playlist)
     {
-        for (auto& i : playlist)
-            playlist_tracker.add_song_at_tail(i);
-        Song curr = player.get_song(playlist_tracker.start_curr());
-        play_song(curr);
+        player.add_current_playlist_at_once(playlist);
+        string curr = player.play_next_song_of_current_playlist();
+        play_song(player.get_song(curr));
     }
 
 
@@ -852,7 +850,7 @@ public:
                 make_mid_playlist_panels(playlistName);
                 panels["mid_panel_1"]->setVisible(false);
                 if (panels.count(playlistName)) panels[playlistName]->setVisible(true);
-                playlist_tracker.Clear();
+                player.clear_current_playlist();
                 play_playlist(player.get_user_playlist(playlistName));
                 });
             userPlaylistCount++;
