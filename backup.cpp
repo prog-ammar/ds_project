@@ -511,6 +511,23 @@ public:
         tail = new_node;
     }
 
+    void add_song_at_curr(string song_id)
+    {
+        Node* new_node = new Node(song_id);
+        if (head == NULL && tail == NULL)
+        {
+            tail = new_node;
+            head = tail;
+            head->next = tail;
+            tail->prev = head;
+            return;
+        }
+        new_node->next = curr->next;
+        new_node->next->prev = new_node;
+        curr->next = new_node;
+        new_node->prev = curr;
+    }
+
     void add_song_at_head(string song_id)
     {
         Node* new_node = new Node(song_id);

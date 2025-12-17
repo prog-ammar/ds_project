@@ -14,6 +14,9 @@
 #include <queue>
 #include <stack>
 #include "backup.cpp"
+#include <algorithm>
+#include <cmath>
+#include <unordered_set>
 
 using namespace std;
 using namespace sf;
@@ -749,6 +752,44 @@ public:
                 showCreatePlaylistPopup();
                 });
         }
+
+        // Smart Play button: plays recommended songs similar to currently playing song
+        if (!sc_panel->get< Button >("smart_play_btn"))
+        {
+            auto smart = return_Button("Smart Play", 180, 40, 230, 160, sc_panel, "smart_play_btn");
+            smart->onPress([this]() {
+                if (currentPlayingSongId.empty())
+                {
+                    // Simple small popup informing user that no song is playing
+                    if (panels.count("no_song_popup"))
+                    {
+                        panels["no_song_popup"]->setVisible(true);
+                        return;
+                    }
+                    auto popup = Panel::create({360.f,100.f});
+                    popup->setPosition((1920.f - 360.f) / 2.f, (1080.f - 100.f) / 2.f);
+                    popup->getRenderer()->setBackgroundColor(tgui::Color::White);
+                    panels["no_song_popup"] = popup;
+                    auto lbl = Label::create("No song currently playing");
+                    lbl->setPosition(40, 20);
+                    popup->add(lbl, "lbl");
+                    auto ok = Button::create("OK");
+                    ok->setPosition(120, 55);
+                    ok->setSize(100, 30);
+                    popup->add(ok, "ok");
+                    gui.add(popup);
+                    ok->onPress([this, popup]() {
+                        popup->setVisible(false);
+                        gui.remove(popup);
+                        panels.erase("no_song_popup");
+                        });
+                    return;
+                }
+
+                
+                
+            });
+        }
     }
 
     void play_playlist(vector<string> playlist)
@@ -758,6 +799,8 @@ public:
         Song curr = player.get_song(playlist_tracker.start_curr());
         play_song(curr);
     }
+
+
 
     void mid_panel_1()
     {
@@ -795,7 +838,7 @@ public:
 
         map < string, vector<string>> m = player.get_user_playlists();
         auto mid = panels["mid_panel_1"];
-        label = return_Label("Playlists", 30, 150, 350, panels["mid_panel_1"], "genre_label", "");
+        label = return_Label("Playlists", 30, 150, 350, panels["mid_panel_1"], "playlist_label", "");
         int userPlaylistCount = 0;
         for (auto& i : m)
         {
