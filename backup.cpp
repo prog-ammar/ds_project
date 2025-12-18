@@ -64,6 +64,7 @@ struct Vertice
         this->data = data;
         in_degree = out_degree = 0;
     }
+
 };
 
 class Recom_Graph
@@ -106,19 +107,18 @@ public:
         }
     }
 
-    string recommend(string id)
+    vector<string> recommend(string id)
     {
-        string max_sim_id;
-        double max_sim = 0;;
-        for (auto i : vertices[id]->adj_vertices)
+        vector < pair < string, pair<double, Vertice*>>> copy_of_map ( vertices[id]->adj_vertices.begin(),vertices[id]->adj_vertices.end());
+        sort(copy_of_map.begin(), copy_of_map.end(), [](const auto& a, const auto& b) {
+            return a.second.first > b.second.first;
+            });
+        vector<string> sorted_ids;
+        for (auto& i : copy_of_map)
         {
-            if (i.second.first > max_sim)
-            {
-                max_sim = i.second.first;
-                max_sim_id = i.first;
-            }
+            sorted_ids.push_back(i.second.second->id);
         }
-        return max_sim_id;
+        return sorted_ids;
     }
 };
 
@@ -199,7 +199,10 @@ public:
 
     string get_curr()
     {
+        if(curr!=NULL)
         return curr->song_id;
+
+        return "";
     }
 
     void add_song_at_curr(string song_id)
@@ -271,6 +274,11 @@ public:
 
     string move_curr_front()
     {
+        if (curr == NULL)
+        {
+            string id=start_curr();
+            return id;
+        }
         if (!isEmpty())
         {
             curr = curr->next;
@@ -279,6 +287,18 @@ public:
         cout << "Error : Playlist is Empty\n";
         return "";
 
+    }
+
+    bool id_exists_or_not(string id)
+    {
+        if (head == NULL) return false;
+        Node* temp = head;
+        do
+        {
+            if (temp->song_id == id) return true;
+            temp = temp->next;
+        } while (temp != head);
+        return false;
     }
 
     string move_curr_back()
@@ -327,12 +347,29 @@ public:
     {
         read_from_file("songs_set_1.csv");
         read_user_playlist("user_playlists.csv");
+        calculate_similarity_of_all_songs();
         build_trie();
     }
 
     void add_song_to_current_playlist(string id)
     {
+        if(!curr_playlist_manager.id_exists_or_not(id))
         curr_playlist_manager.add_song_at_tail(id);
+    }
+
+    string start_current_playlist()
+    {
+        return curr_playlist_manager.start_curr();
+    }
+    void add_song_to_current_playlist_at_current_position(string id)
+    {
+        if (!curr_playlist_manager.id_exists_or_not(id))
+            curr_playlist_manager.add_song_at_curr(id);
+    }
+
+    bool song_exists_in_current_playlist(string id)
+    {
+        return curr_playlist_manager.id_exists_or_not(id);
     }
 
     void add_current_playlist_at_once(vector<string> ids)
@@ -360,7 +397,7 @@ public:
         return curr_playlist_manager.move_curr_back();
     }
 
-    string recommend_song_regarding_to_current_song()
+    vector<string> recommend_song_regarding_to_current_song()
     {
         return graph.recommend(curr_playlist_manager.get_curr());
     }
@@ -643,7 +680,6 @@ public:
 
 
 };
-
 
 
 

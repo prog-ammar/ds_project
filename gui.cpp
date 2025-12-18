@@ -756,46 +756,33 @@ public:
         if (!sc_panel->get< Button >("smart_play_btn"))
         {
             auto smart = return_Button("Smart Play", 180, 40, 230, 160, sc_panel, "smart_play_btn");
-            smart->onPress([this]() {
-                if (currentPlayingSongId.empty())
+            smart->onPress([=]()
                 {
-                    // Simple small popup informing user that no song is playing
-                    if (panels.count("no_song_popup"))
-                    {
-                        panels["no_song_popup"]->setVisible(true);
-                        return;
-                    }
-                    auto popup = Panel::create({360.f,100.f});
-                    popup->setPosition((1920.f - 360.f) / 2.f, (1080.f - 100.f) / 2.f);
-                    popup->getRenderer()->setBackgroundColor(tgui::Color::White);
-                    panels["no_song_popup"] = popup;
-                    auto lbl = Label::create("No song currently playing");
-                    lbl->setPosition(40, 20);
-                    popup->add(lbl, "lbl");
-                    auto ok = Button::create("OK");
-                    ok->setPosition(120, 55);
-                    ok->setSize(100, 30);
-                    popup->add(ok, "ok");
-                    gui.add(popup);
-                    ok->onPress([this, popup]() {
-                        popup->setVisible(false);
-                        gui.remove(popup);
-                        panels.erase("no_song_popup");
-                        });
-                    return;
-                }
 
-                
-                
+                    if (!player.any_playlist_playing())
+                    {
+                        vector<string> rec_id = player.recommend_song_regarding_to_current_song();
+                        for (auto& i : rec_id)
+                        {
+                            if (!player.song_exists_in_current_playlist(i))
+                            {
+                                player.add_song_to_current_playlist(i);
+                                break;
+                            }
+
+                        }
+                    }
             });
         }
     }
 
     void play_playlist(vector<string> playlist)
     {
+        
         player.add_current_playlist_at_once(playlist);
-        string curr = player.play_next_song_of_current_playlist();
-        play_song(player.get_song(curr));
+        
+        Song curr = player.get_song(player.start_current_playlist());
+        play_song(curr);
     }
 
 
