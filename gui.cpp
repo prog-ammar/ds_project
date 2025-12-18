@@ -941,6 +941,7 @@ public:
 
                 auto button = return_Button("", 80, 80, pos_x, pos_y, panels[s_panel_name], s.id, "background/cd.png");
 
+
                 button->onPress([=]
                     {
                         play_song(s);
