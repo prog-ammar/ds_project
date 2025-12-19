@@ -322,6 +322,20 @@ public:
         return temp1;
     }
 
+    string get_prev()
+    {
+        if (curr != NULL && curr->prev != NULL)
+            return curr->prev->song_id;
+        return "";
+    }
+
+    string get_next()
+    {
+        if (curr != NULL && curr->next != NULL)
+            return curr->next->song_id;
+        return "";
+    }
+
 };
 
 class Player
@@ -410,6 +424,15 @@ public:
     string get_current_playlist_song_id()
     {
         return curr_playlist_manager.get_curr();
+    }
+
+    string get_next_playlist_song_id()
+    {
+        return curr_playlist_manager.get_next();
+    }
+    string get_prev_playlist_song_id()
+    {
+        return curr_playlist_manager.get_prev();
     }
 
     string play_prev_song_of_current_playlist()

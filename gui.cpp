@@ -167,7 +167,14 @@ public:
     void pause() { if (stream) stream->pause();  }
     void stop()  { if (stream) stream->stop();   }
     void setVolume(float volume) { if (stream) stream->setVolume(volume); }
-    void seek(double time) { sf::Time t = sf::seconds(time); if (stream) stream->onSeek(t); }
+    void seek(double time) { sf::Time t = sf::seconds(time); if (stream) stream->setPlayingOffset(t); }
+
+    sf::Time getOffset() const
+    {
+        if (stream)
+            return stream->getPlayingOffset();
+        return sf::Time::Zero;
+    }
 
     void setDuration(float seconds) { durationSeconds = seconds; }
     float getDuration() const { return durationSeconds; }
@@ -276,7 +283,6 @@ public:
     UI_Functionality()
     {
         persistentPlayer = std::make_unique<Mp3Player>();
-        player.read_from_file("songs_set_1.csv");
     }
 
 
@@ -479,7 +485,7 @@ public:
 
         // Title
         if(playlist_name=="")
-        auto title = return_Label("Current Playlist", 25, 50, 80, c_panel, "curr_title");
+        auto title = return_Label("", 25, 50, 80, c_panel, "curr_title");
         else
          auto title = return_Label(playlist_name, 25, 50, 80, c_panel, "curr_title");
         // No playlist playing -> show message
@@ -557,34 +563,35 @@ public:
 
             if (persistentPlayer->get_status())
             {
-                if (clock.getElapsedTime().asSeconds() >= 1.0f)
+                sf::Time offset = persistentPlayer->getOffset();
+                int seconds = static_cast<int>(offset.asSeconds());
+
+                int min = seconds / 60;
+                int sec = seconds % 60;
+
+                label->setText(
+                    (min < 10 ? "0" : "") + to_string(min) + ":" +
+                    (sec < 10 ? "0" : "") + to_string(sec)
+                );
+
+                p_bar->setValue(seconds);
+
+                // song finished?
+                if (seconds >= p_bar->getMaximum())
                 {
-                    stringstream ss(label->getText().toStdString());
-                    string min;
-                    string sec;
-                    getline(ss, min, ':');
-                    getline(ss, sec, ':');
-                    int m = stoi(min);
-                    int s = stoi(sec);
-                    int v = (m * 60) + s + 1;
-                    string duration = to_string(v / 60) + ":" + to_string(v % 60);
-                    label->setText(duration);
-                    if (p_bar->getValue() < p_bar->getMaximum())
+                    persistentPlayer->stop();
+
+                    if (player.any_playlist_playing())
                     {
-                        p_bar->setValue(p_bar->getValue()+1.0f);
-                    }
-                    else
-                    {
-                        if (player.any_playlist_playing())
-                            persistentPlayer->stop();
-                        else
+                        if (player.get_next_playlist_song_id() != "" && player.get_current_playlist_song_id() != player.get_current_playlist_song_id())
                         {
-                            persistentPlayer->stop();
-                            play_song(player.get_song(player.play_next_song_of_current_playlist()));
+                            string nextId = player.play_next_song_of_current_playlist();
+              
+                                play_song(player.get_song(nextId));
                         }
                     }
-                    clock.restart();
                 }
+                   
             }
 
             window.clear(sf::Color(0,50,25));
@@ -729,24 +736,33 @@ public:
 
         prev_button->onPress([=]
             {
-                string song_id = player.play_prev_song_of_current_playlist();
-                if (song_id != "")
+                string curr_id = player.get_current_playlist_song_id();
+                if (curr_id != player.get_prev_playlist_song_id())
                 {
-                    Song song = player.get_song(song_id);
-                    play_song(song);
+                    string song_id = player.play_prev_song_of_current_playlist();
+                    if (song_id != "")
+                    {
+                        Song song = player.get_song(song_id);
+                        play_song(song);
+                    }
+                    highlight_playlist_panel_song(song_id);
                 }
-                highlight_playlist_panel_song(song_id);
+                
             });
 
         next_button->onPress([=]
             {
-                string song_id = player.play_next_song_of_current_playlist();
-                if (song_id != "")
+                string curr_id = player.get_current_playlist_song_id();
+                if (curr_id != player.get_next_playlist_song_id())
                 {
-                    Song song = player.get_song(song_id);
-                    play_song(song);
+                    string song_id = player.play_next_song_of_current_playlist();
+                    if (song_id != "")
+                    {
+                        Song song = player.get_song(song_id);
+                        play_song(song);
+                    }
+                    highlight_playlist_panel_song(song_id);
                 }
-                highlight_playlist_panel_song(song_id);
             });
 
         progressBar->onMouseEnter([=]
@@ -905,7 +921,7 @@ public:
     {
         if (panels.count("current_playlist_panel"))
         {
-            if (panels["current_playlist_panel"]->get<Label>("curr_title")->getText().toStdString() != "Current Playlist")
+            if (panels["current_playlist_panel"]->get<Label>("curr_title")->getText().toStdString() != "")
             {
                 panels["current_playlist_panel"]->get<Label>(player.get_current_playlist_song_id())->getRenderer()->setTextColor(tgui::Color::Blue);
                 for (auto& i : player.get_current_playlist())
@@ -988,6 +1004,12 @@ public:
         panels["main_mid_panel"]->setVisible(true);
         panels["mid_panel_1"]->setVisible(false);
 
+        if (panels.count(s_panel_name))
+        {
+            gui.remove(panels[s_panel_name]);
+            panels.erase(s_panel_name);
+        }
+
         if (panels.count(s_panel_name) == 0)
         {
             auto g_panel = ScrollablePanel::create({ 1080.f,820.f });
@@ -1002,6 +1024,7 @@ public:
             }
 
             int j = 0;
+            cout << j << endl;
 
             for (auto i : songs)
             {
@@ -1012,14 +1035,19 @@ public:
                 int pos_y = 150 + (row * 150);
 
                 Song s = player.get_song(i);
+                
 
                 auto button = return_Button("", 80, 80, pos_x, pos_y, panels[s_panel_name], s.id, "background/cd.png");
 
 
                 button->onPress([=]
                     {
+                        player.clear_current_playlist();
+                        player.add_song_to_current_playlist(s.id);
+                        player.start_current_playlist();
+                        current_playlist_panel("Current Playlist", { s.id });
                         play_song(s);
-                        
+                        highlight_playlist_panel_song(s.id);
                     });
 
                 switch_back_to_main_panel(s_panel_name);
