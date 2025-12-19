@@ -27,7 +27,6 @@ struct Song
     {
         return other.id == id;
     }
-
 };
 
 struct Node
@@ -312,6 +311,17 @@ public:
         return "";
     }
 
+    vector<string> get_all_nodes()
+    {
+        vector<string> temp1;
+        Node* temp = head;
+        do {
+            temp1.push_back(temp->song_id);
+            temp = temp->next;
+        } while (temp!=head);
+        return temp1;
+    }
+
 };
 
 class Player
@@ -357,6 +367,11 @@ public:
         curr_playlist_manager.add_song_at_tail(id);
     }
 
+    vector<string> get_current_playlist()
+    {
+        return curr_playlist_manager.get_all_nodes();
+
+    }
     string start_current_playlist()
     {
         return curr_playlist_manager.start_curr();
@@ -389,7 +404,12 @@ public:
     
     bool any_playlist_playing()
     {
-        return curr_playlist_manager.isEmpty();
+        return !curr_playlist_manager.isEmpty();
+    }
+
+    string get_current_playlist_song_id()
+    {
+        return curr_playlist_manager.get_curr();
     }
 
     string play_prev_song_of_current_playlist()
@@ -654,6 +674,18 @@ public:
         if (it != user_playlists.end())
             return it->second;
         return {};
+    }
+
+    string get_song_title(string id)
+    {
+        for (auto& i : songs)
+        {
+            if (i.second.id == id)
+            {
+                return i.second.title;
+            }
+        }
+        return "";
     }
 
     // Add a convenience to create an empty playlist (no-op if exists)

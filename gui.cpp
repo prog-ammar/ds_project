@@ -460,6 +460,47 @@ public:
         }
     }
 
+
+    void current_playlist_panel(string playlist_name="", vector<string> songs={})
+    {
+        // Remove existing panel if present so updates refresh cleanly
+        if (panels.count("current_playlist_panel"))
+        {
+            gui.remove(panels["current_playlist_panel"]);
+            panels.erase("current_playlist_panel");
+        }
+
+        auto c_panel = ScrollablePanel::create({ 420.f,820.f });
+        c_panel->setPosition(1500, 80);
+        c_panel->getRenderer()->setBackgroundColor(tgui::Color::White);
+        c_panel->setVisible(true);
+        panels["current_playlist_panel"] = c_panel;
+        gui.add(c_panel);
+
+        // Title
+        if(playlist_name=="")
+        auto title = return_Label("Current Playlist", 25, 50, 80, c_panel, "curr_title");
+        else
+         auto title = return_Label(playlist_name, 25, 50, 80, c_panel, "curr_title");
+        // No playlist playing -> show message
+        if (!player.any_playlist_playing())
+        {
+            auto no = return_Label("No active playlist", 20, 50, 120, c_panel, "curr_none");
+            return;
+        }
+        else
+        {
+            int j = 0;
+            for (auto& i : songs)
+            {
+                string song_name = player.get_song_title(i);
+                auto label = return_Label(song_name, 20, 50, (j * 40) + 120, panels["current_playlist_panel"], i, "");
+                j++;
+            }
+        }
+        highlight_playlist_panel_song(player.get_current_playlist_song_id());
+    }
+
     void make_mid_playlist_panels(const std::string& playlistName)
     {
         // quick wrapper to open playlist as a panel similar to genre panels
@@ -694,6 +735,7 @@ public:
                     Song song = player.get_song(song_id);
                     play_song(song);
                 }
+                highlight_playlist_panel_song(song_id);
             });
 
         next_button->onPress([=]
@@ -704,6 +746,7 @@ public:
                     Song song = player.get_song(song_id);
                     play_song(song);
                 }
+                highlight_playlist_panel_song(song_id);
             });
 
         progressBar->onMouseEnter([=]
@@ -758,8 +801,7 @@ public:
             auto smart = return_Button("Smart Play", 180, 40, 230, 160, sc_panel, "smart_play_btn");
             smart->onPress([=]()
                 {
-
-                    if (!player.any_playlist_playing())
+                    if (player.any_playlist_playing())
                     {
                         vector<string> rec_id = player.recommend_song_regarding_to_current_song();
                         for (auto& i : rec_id)
@@ -771,6 +813,10 @@ public:
                             }
 
                         }
+                        
+                        string name = panels["current_playlist_panel"]->get<Label>("curr_title")->getText().toStdString();
+                        current_playlist_panel(name, player.get_current_playlist());
+                        
                     }
             });
         }
@@ -783,14 +829,17 @@ public:
         
         Song curr = player.get_song(player.start_current_playlist());
         play_song(curr);
+
+        
     }
 
 
 
     void mid_panel_1()
     {
-        auto sc_panel = ScrollablePanel::create({ 1500.f,820.f });
+        auto sc_panel = ScrollablePanel::create({ 1080.f,820.f });
         sc_panel->setPosition(420, 80);
+       
         sc_panel->getRenderer()->setBackgroundColor(tgui::Color::White);
         panels["mid_panel_1"] = sc_panel;
 
@@ -834,17 +883,40 @@ public:
             btn->getRenderer()->setBorderColor(tgui::Color::White);
             label = return_Label(playlistName, 20, pos_x + 20, pos_y + 100, panels["mid_panel_1"]);
             btn->onPress([this, playlistName]() {
+                
+
                 make_mid_playlist_panels(playlistName);
                 panels["mid_panel_1"]->setVisible(false);
                 if (panels.count(playlistName)) panels[playlistName]->setVisible(true);
                 player.clear_current_playlist();
                 play_playlist(player.get_user_playlist(playlistName));
+                current_playlist_panel(playlistName, player.get_user_playlist(playlistName));
+               
+  
                 });
             userPlaylistCount++;
         }
 
         gui.add(sc_panel);
 
+    }
+
+    void highlight_playlist_panel_song(string id)
+    {
+        if (panels.count("current_playlist_panel"))
+        {
+            if (panels["current_playlist_panel"]->get<Label>("curr_title")->getText().toStdString() != "Current Playlist")
+            {
+                panels["current_playlist_panel"]->get<Label>(player.get_current_playlist_song_id())->getRenderer()->setTextColor(tgui::Color::Blue);
+                for (auto& i : player.get_current_playlist())
+                {
+                    if (i != id)
+                    {
+                        panels["current_playlist_panel"]->get<Label>(i)->getRenderer()->setTextColor(tgui::Color::Black);
+                    }
+                }
+            }
+        }
     }
 
     void play_song(Song song)
@@ -883,6 +955,8 @@ public:
         play_button->getRenderer()->setTexture(t1);
         play_button->setSize(40, 40);
         play_button->setPosition(945, 15);
+        
+        
     }
 
     void switch_back_to_main_panel(string s_panel_name)
@@ -916,7 +990,7 @@ public:
 
         if (panels.count(s_panel_name) == 0)
         {
-            auto g_panel = ScrollablePanel::create({ 1500.f,820.f });
+            auto g_panel = ScrollablePanel::create({ 1080.f,820.f });
             g_panel->setPosition(420, 80);
             g_panel->getRenderer()->setBackgroundColor(tgui::Color::White);
             panels[s_panel_name] = g_panel;
@@ -945,6 +1019,7 @@ public:
                 button->onPress([=]
                     {
                         play_song(s);
+                        
                     });
 
                 switch_back_to_main_panel(s_panel_name);
@@ -969,6 +1044,7 @@ public:
         play_panel();
         main_mid_panel();
         mid_panel_1();
+        current_playlist_panel();
     }
 };
 
