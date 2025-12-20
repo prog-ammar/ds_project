@@ -249,15 +249,19 @@ public:
     void Clear()
     {
         if (isEmpty()) return;
-        Node* temp = head;
-        do
-        {
-            Node* temp1 = temp->next;
-            delete temp;
-            temp = temp1;
-        } while (temp != tail);
-        delete temp;
-        head = tail = NULL;
+        if (head == NULL) return;
+      
+            Node* temp = head;
+            tail->next = NULL;
+           
+            while (temp != NULL) {
+                Node* temp1 = temp->next;
+                delete temp;
+                temp = temp1;
+            }
+            head = tail = curr = NULL;
+      
+        
     }
 
     string start_curr()
