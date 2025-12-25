@@ -292,17 +292,32 @@ public:
 
         del->onPress([this, playlistName]() {
             // remove from player (map + persist)
+            persistentPlayer->stop();
+
+            // 2. Clear the logic
             player.delete_user_playlist(playlistName);
             player.write_user_playlist("user_playlists.csv");
             player.clear_current_playlist();
-            persistentPlayer->stop();
-            persistentPlayer->pause();
+
+            // 3. UI Cleanup: Clear the "Now Playing" text so the user sees it's gone
+            auto playPanel = panels["play_panel"];
+            playPanel->get<Label>("song_label")->setText("");
+            playPanel->get<Slider>("p_bar")->setValue(0);
+            playPanel->get<Label>("time_label_1")->setText("0:00");
+
+            // 4. Update the current playlist view (the sidebar)
+            current_playlist_panel("Current Playlist", {});
+
+            if (panels["main_mid_panel"]->get<Button>("back-button"))
+                panels["main_mid_panel"]->get<Button>("back-button")->setVisible(false);
+
+            // 5. Remove the playlist's specific panel
             gui.remove(panels[playlistName]);
             panels.erase(playlistName);
-            gui.remove(panels["mid_panel_1"]);
-            panels.erase("mid_panel_1");
+
+            // 6. Refresh the main mid panel to remove the deleted CD icon
             mid_panel_1();
-            if (panels.count("mid_panel_1")) panels["mid_panel_1"]->setVisible(true);
+            panels["mid_panel_1"]->setVisible(true);
             });
     }
 
@@ -395,6 +410,10 @@ public:
             panels["search_panel"] = init_panel;
             gui.add(panels["search_panel"]);
         }
+        else
+        {
+			panels["search_panel"]->removeAllWidgets();
+        }
         
         auto search = return_EditBox("Search", 360, 40, 750, 25, panels["search_panel"], "search");
         auto label = return_Label("", 0, 150, 20, panels["search_panel"], "bg", "background/logo.png");
@@ -479,7 +498,7 @@ public:
 
 
         auto music_button = return_Button("", 40, 40, 150, 20, panels["play_panel"], "music_img", "background/music.png");
-        auto song_label = return_Label("", 12, 210, 30, panels["play_panel"], "song_label");
+        auto song_label = return_Label("", 15, 210, 30, panels["play_panel"], "song_label");
         auto prev_button = return_Button("", 30, 30, 900, 20, panels["play_panel"], "prev", "background/back.png");
         auto play_button = return_Button("", 30, 30, 950, 20, panels["play_panel"], "play", "background/play1.png");
         auto next_button = return_Button("", 30, 30, 1000, 20, panels["play_panel"], "next", "background/next.png");
@@ -648,6 +667,10 @@ public:
             gui.add(sc_panel);
         }
       
+        else
+        {
+			panels["mid_panel_1"]->removeAllWidgets();
+        }
         
 
         auto label = return_Label("Genre", 30, 150, 50, panels["mid_panel_1"], "genre_label", "");
@@ -664,7 +687,10 @@ public:
             int pos_y = 150 + (row * 150);
 
             auto button = return_Button("", 80, 80, pos_x, pos_y, panels["mid_panel_1"], i.first, "background/cd.png");
-            auto label = return_Label(i.first, 20, pos_x+20, pos_y+100, panels["mid_panel_1"]);
+            auto label = return_Label(i.first, 18, 0, 0, panels["mid_panel_1"]);
+
+            float buttonCenterX = pos_x + 40.0f;
+            label->setPosition(buttonCenterX - (label->getSize().x / 2.0f), pos_y + 90.0f);
 
             j++;
 
@@ -687,12 +713,16 @@ public:
             int pos_y = 450 + (userPlaylistCount / 5) * 120;
             auto btn = return_Button("", 80, 80, pos_x, pos_y, panels["mid_panel_1"], "playlist_btn_" + playlistName, "background/cd.png");
             btn->getRenderer()->setBorderColor(tgui::Color::White);
-            label = return_Label(playlistName, 20, pos_x + 20, pos_y + 100, panels["mid_panel_1"]);
-            btn->onPress([this, playlistName]() {
-                
+
+            auto label = return_Label(playlistName, 18, 0, 0, panels["mid_panel_1"]);
+            float btnCenterX = pos_x + 40.0f;
+            label->setPosition(btnCenterX - (label->getSize().x / 2.0f), pos_y + 90.0f);
+
+            btn->onPress([=]() {
+                panels["mid_panel_1"]->setVisible(false);
 
                 make_mid_playlist_panels(playlistName);
-                panels["mid_panel_1"]->setVisible(false);
+                
                 if (panels.count(playlistName)) panels[playlistName]->setVisible(true);
                 player.clear_current_playlist();
                 play_playlist(player.get_user_playlist(playlistName));
@@ -773,25 +803,47 @@ public:
 
     void switch_back_to_main_panel(string s_panel_name)
     {
-        Button::Ptr back_button;
-        if (!panels["main_mid_panel"]->get<Button>("back - button"))
+        auto mid_container = panels["main_mid_panel"];
+        if (!mid_container) return;
+
+        mid_container->setVisible(true);
+        mid_container->moveToFront();
+
+        auto back_button = mid_container->get<Button>("back - button");
+        if (!back_button)
         {
-           back_button = return_Button("", 50, 50, 350, 50, panels["main_mid_panel"], "back - button", "background/back.png");
-        }
-        else
-        {
-            back_button = panels["main_mid_panel"]->get<Button>("back - button");
+            back_button = return_Button("", 50, 50, 350, 50, mid_container, "back - button", "background/back.png");
         }
 
         back_button->setVisible(true);
-        
-        back_button->onPress([=]
+        back_button->moveToFront();
+
+        // IMPORTANT: Clear old logic so we don't try to hide multiple panels at once
+        back_button->onPress.disconnectAll();
+
+        // Use [this, s_panel_name] to ensure the lambda knows which panel it's talking to
+        back_button->onPress([this, s_panel_name]()
             {
-               /* gui.remove(panels[s_panel_name]);
-                panels.erase(s_panel_name);*/
-                /*panels["search"]->setVisible(false);*/
-                panels["mid_panel_1"]->setVisible(true);
-                panels[s_panel_name]->setVisible(false);
+                // 1. CRASH PREVENTION: Check if the key exists in the map before using it
+                if (panels.find(s_panel_name) != panels.end())
+                {
+                    // Key exists, now check if the pointer is valid
+                    if (panels[s_panel_name] != nullptr)
+                    {
+                        panels[s_panel_name]->setVisible(false);
+                    }
+                }
+
+                // 2. Return to home view
+                if (panels.count("mid_panel_1") > 0)
+                {
+                    panels["mid_panel_1"]->setVisible(true);
+                    panels["mid_panel_1"]->moveToFront();
+                }
+
+                // 3. Hide this back button since we are now on the main screen
+                auto btn = panels["main_mid_panel"]->get<Button>("back - button");
+                if (btn) btn->setVisible(false);
             });
     }
 
@@ -809,6 +861,13 @@ public:
             g_panel->getRenderer()->setBackgroundColor(tgui::Color::White);
             panels[s_panel_name] = g_panel;
             gui.add(panels[s_panel_name]);
+        }
+        else
+        {
+            switch_back_to_main_panel(s_panel_name);
+            panels[s_panel_name]->setVisible(true);
+            panels[s_panel_name]->moveToFront();
+            return;
         }
 
             if (songs.empty())
@@ -845,15 +904,22 @@ public:
 						
                     });
 
-                switch_back_to_main_panel(s_panel_name);
-                auto label = return_Label(s.title, 13, pos_x - 5, pos_y + 80, panels[s_panel_name]);
+                auto label = return_Label(s.title, 15, 0, 0, panels[s_panel_name]);
+                float buttonCenterX = pos_x + (80.f / 2.f);
+                float labelX = buttonCenterX - (label->getSize().x / 2.f);
+
+                label->setPosition(labelX, pos_y + 85.f);
+
+                
+
+               
 
                 j++;
             }
         
-
+            switch_back_to_main_panel(s_panel_name);
             panels[s_panel_name]->setVisible(true);
-        
+            panels[s_panel_name]->moveToFront();
 
     }
 
@@ -872,6 +938,13 @@ public:
             g_panel->getRenderer()->setBackgroundColor(tgui::Color::White);
             panels[s_panel_name] = g_panel;
             gui.add(panels[s_panel_name]);
+        }
+        else
+        {
+            switch_back_to_main_panel(s_panel_name);
+            panels[s_panel_name]->setVisible(true);
+            panels[s_panel_name]->moveToFront();
+            return;
         }
 
         if (songs.empty())
@@ -898,18 +971,26 @@ public:
 
             button->onPress([this, s]
                 {
+                    persistentPlayer->stop();
                     play_song(s);
                     highlight_playlist_panel_song(s.id);
                 });
 
-            switch_back_to_main_panel(s_panel_name);
-            auto label = return_Label(s.title, 13, pos_x - 5, pos_y + 80, panels[s_panel_name]);
+            auto label = return_Label(s.title, 15, 0, 0, panels[s_panel_name]);
+            float buttonCenterX = pos_x + (80.f / 2.f);
+            float labelX = buttonCenterX - (label->getSize().x / 2.f);
+
+            label->setPosition(labelX, pos_y + 85.f);
+
+            
+            
 
             j++;
         }
 
-
+        switch_back_to_main_panel(s_panel_name);
         panels[s_panel_name]->setVisible(true);
+        panels[s_panel_name]->moveToFront();
 
 
     }

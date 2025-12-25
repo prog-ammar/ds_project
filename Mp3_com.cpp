@@ -129,7 +129,13 @@ bool  Mp3Player::open(const std::string& filename)
 
 void  Mp3Player::play() { if (stream) stream->play(); }
 void  Mp3Player::pause() { if (stream) stream->pause(); }
-void  Mp3Player::stop() { if (stream) stream->stop(); }
+void  Mp3Player::stop() {
+    if (stream)
+    {
+        stream->stop();
+        stream.reset();
+    }
+}
 void  Mp3Player::setVolume(float volume) { if (stream) stream->setVolume(volume); }
 void  Mp3Player::seek(double time) { sf::Time t = sf::seconds(time); if (stream) stream->setPlayingOffset(t); }
 
