@@ -1,9 +1,9 @@
 #include "UI_Template.h"
 
 
-Button::Ptr UI_Template::return_Button(string cap, int width, int height, int pos_x, int pos_y, Panel::Ptr P, string name, string texture_path)
+tgui::Button::Ptr UI_Template::return_Button(string cap, int width, int height, int pos_x, int pos_y, tgui::Panel::Ptr P, string name, string texture_path)
 {
-    Button::Ptr button = Button::create();
+    tgui::Button::Ptr button = tgui::Button::create();
     button->setText(cap);
     button->setPosition(pos_x, pos_y);
     button->setSize(width, height);
@@ -21,9 +21,9 @@ Button::Ptr UI_Template::return_Button(string cap, int width, int height, int po
     return button;
 }
 
-RadioButton::Ptr UI_Template::return_Radio(string cap, int pos_x, int pos_y, Panel::Ptr P, string name)
+tgui::RadioButton::Ptr UI_Template::return_Radio(string cap, int pos_x, int pos_y, tgui::Panel::Ptr P, string name)
 {
-    RadioButton::Ptr button = RadioButton::create();
+    tgui::RadioButton::Ptr button = tgui::RadioButton::create();
     button->setText(cap);
     button->setPosition(pos_x, pos_y);
     button->getRenderer()->setBorders(1.4);
@@ -35,9 +35,9 @@ RadioButton::Ptr UI_Template::return_Radio(string cap, int pos_x, int pos_y, Pan
     return button;
 }
 
-EditBox::Ptr UI_Template::return_EditBox(string text, int width, int height, int pos_x, int pos_y, Panel::Ptr P, string name)
+tgui::EditBox::Ptr UI_Template::return_EditBox(string text, int width, int height, int pos_x, int pos_y, tgui::Panel::Ptr P, string name)
 {
-    EditBox::Ptr editBox = EditBox::create();
+    tgui::EditBox::Ptr editBox = tgui::EditBox::create();
     editBox->setPosition(pos_x, pos_y);
     editBox->setSize(width, height);
     editBox->setDefaultText(text);
@@ -50,10 +50,10 @@ EditBox::Ptr UI_Template::return_EditBox(string text, int width, int height, int
 }
 
 
-Slider::Ptr UI_Template::return_Slider(int width, int height, int pos_x, int pos_y, Panel::Ptr P, string name)
+tgui::Slider::Ptr UI_Template::return_Slider(int width, int height, int pos_x, int pos_y, tgui::Panel::Ptr P, string name)
 {
 
-    Slider::Ptr slider = Slider::create();
+    tgui::Slider::Ptr slider = tgui::Slider::create();
     slider->setPosition(pos_x, pos_y);
     slider->setSize(width, height);
     slider->setMinimum(0);
@@ -64,9 +64,9 @@ Slider::Ptr UI_Template::return_Slider(int width, int height, int pos_x, int pos
     return slider;
 }
 
-Label::Ptr UI_Template::return_Label(string text, int text_size, int pos_x, int pos_y, Panel::Ptr P, string name , string texture_path )
+tgui::Label::Ptr UI_Template::return_Label(string text, int text_size, int pos_x, int pos_y, tgui::Panel::Ptr P, string name , string texture_path )
 {
-    Label::Ptr label = Label::create(text);
+    tgui::Label::Ptr label = tgui::Label::create(text);
     label->setPosition(pos_x, pos_y);
     label->setTextSize(text_size);
     if (texture_path != "")

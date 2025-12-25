@@ -22,6 +22,7 @@ Vertice::Vertice(string id , int data)
 {
      this->id = id;
      this->data = data;
+     weight = 0;
      in_degree = out_degree = 0;
 }
 
@@ -296,8 +297,8 @@ Vertice::Vertice(string id , int data)
 
     Player::Player()
     {
-        read_from_file("final_songs_set.csv");
-        read_user_playlist("user_playlists.csv");
+        read_from_file("files/final_songs_set.csv");
+        read_user_playlist("files/user_playlists.csv");
         calculate_similarity_of_all_songs();
         build_trie();
     }
