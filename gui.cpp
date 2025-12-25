@@ -13,9 +13,11 @@
 #include <memory>
 #include <queue>
 #include <stack>
-#include "backup.cpp"
-#include <algorithm>
+#include "backend.h"
+#include <mpg123.h>
 #include <cmath>
+#include "Mp3_com.h"
+#include "UI_Template.h"
 #include <unordered_set>
 
 using namespace std;
@@ -24,250 +26,6 @@ using namespace tgui;
 
 
 
-class Mp3Stream : public sf::SoundStream
-{
-
-private:
-
-    mpg123_handle* mh = nullptr;
-    size_t bufferSize = 0;
-    std::vector<unsigned char> buffer;
-    size_t samplesProcessed;
-
-    long rate = 0;
-    int channels = 0;
-    int encoding = 0;
-    int samplecount = 0;
-public:
-    Mp3Stream() {
-        mpg123_init();
-        int err = MPG123_OK;
-
-        mh = mpg123_new(NULL, &err);
-        if (!mh)
-            cout<<"Erorr in opeing handle";
-    }
-
-    bool open(const std::string& filename)
-    {
-        
-
-        if (mpg123_open(mh, filename.c_str()) != MPG123_OK)
-            return false;
-
-        // Some builds of libmpg123 restrict supported output sample rates.
-        // Ensure we request a supported rate (44100, 22050 or 11025). 44100 is the safe default.
-        mpg123_format_none(mh);
-        int setRet = mpg123_format(mh, 44100, MPG123_STEREO, MPG123_ENC_SIGNED_16);
-        if (setRet != MPG123_OK)
-        {
-            // Failed to set a supported output format
-            mpg123_close(mh);
-            mpg123_delete(mh);
-            mh = nullptr;
-            mpg123_exit();
-            return false;
-        }
-
-        const off_t length = mpg123_length(mh);
-
-        mpg123_getformat(mh, &rate, &channels, &encoding);
-
-        // initialize(channelCount, sampleRate)
-        initialize(static_cast<unsigned int>(channels), static_cast<unsigned int>(rate),{});
-        samplecount = channels * length;
-        bufferSize = mpg123_outblock(mh);
-        buffer.resize(bufferSize);
-
-        return true;
-    }
-
-    virtual void onSeek(sf::Time timeOffset) override
-    {
-        if(!mh)
-            return;
-        SoundSource::Status old = getStatus();
-           
-        if (SoundSource::Status::Playing == old)
-        {
-            pause();
-        }
-
-        double t = timeOffset.asSeconds();
-        // Convert requested time -> decoded PCM sample offset (interleaved samples).
-        const off_t new_offset =
-            mpg123_seek(mh, static_cast<off_t>(t*rate), SEEK_SET);
-        if (new_offset < 0)
-        {
-            sf::err() << "Failed to seek with mpg123: "
-                << mpg123_plain_strerror(static_cast<int>(new_offset)) << std::endl;
-        }
-        else
-        {
-            initialize(channels, rate,{});
-            samplesProcessed = new_offset;
-            
-        }
-
-        if (SoundSource::Status::Playing == old)
-        {
-            play();
-        }
-
-    }
-
-    ~Mp3Stream()
-    {
-        if (mh)
-        {
-            mpg123_close(mh);
-            mpg123_delete(mh);
-            mpg123_exit();
-        }
-    }
-
-protected:
-
-    virtual bool onGetData(Chunk& data) override
-    {
-        size_t done = 0;
-        int ret = mpg123_read(mh, buffer.data(), bufferSize, &done);
-
-        if (ret == MPG123_DONE || done == 0)
-            return false;
-
-        data.samples = reinterpret_cast<short*>(buffer.data());
-        data.sampleCount = done / sizeof(short);
-
-        samplesProcessed += data.sampleCount;
-        return true;
-    }
-
-
-};
-
-class Mp3Player
-{
-private:
-    std::unique_ptr<Mp3Stream> stream;
-    float durationSeconds = 0.f;
-    
-public:
-    Mp3Player() {}
-
-    bool get_status() const { return (stream && stream->getStatus() == sf::SoundSource::Status::Playing); }
-
-    bool open(const std::string& filename)
-    {
-        stream = std::make_unique<Mp3Stream>();
-        if (!stream->open(filename))
-            return false;
-        return true;
-    }
-
-    void play()  { if (stream) stream->play();   }
-    void pause() { if (stream) stream->pause();  }
-    void stop()  { if (stream) stream->stop();   }
-    void setVolume(float volume) { if (stream) stream->setVolume(volume); }
-    void seek(double time) { sf::Time t = sf::seconds(time); if (stream) stream->setPlayingOffset(t); }
-
-    sf::Time getOffset() const
-    {
-        if (stream)
-            return stream->getPlayingOffset();
-        return sf::Time::Zero;
-    }
-
-    void setDuration(float seconds) { durationSeconds = seconds; }
-    float getDuration() const { return durationSeconds; }
-};
-
-class UI_Template
-{
-protected:
-    map<string, Panel::Ptr> panels;
-
-public:
-
-    auto return_Button(string cap, int width, int height, int pos_x, int pos_y, Panel::Ptr P, string name, string texture_path = "")
-    {
-        auto button = Button::create();
-        button->setText(cap);
-        button->setPosition(pos_x, pos_y);
-        button->setSize(width, height);
-        button->getRenderer()->setBorders(1.4);
-        button->getRenderer()->setTextColorHover(sf::Color::White);
-        button->getRenderer()->setBorderColorHover(sf::Color::White);
-        if (texture_path != "")
-        {
-            tgui::Texture t(texture_path);
-            button->getRenderer()->setTexture(t);
-            button->getRenderer()->setBorderColor(tgui::Color::White);
-            t.setDefaultSmooth(true);
-        }
-        P->add(button, name);
-        return button;
-    }
-
-    auto return_Radio(string cap, int pos_x, int pos_y, Panel::Ptr P, string name)
-    {
-        auto button = RadioButton::create();
-        button->setText(cap);
-        button->setPosition(pos_x, pos_y);
-        button->getRenderer()->setBorders(1.4);
-        button->getRenderer()->setTextColorHover(sf::Color::Blue);
-        button->getRenderer()->setBorderColorHover(sf::Color::Blue);
-        button->getRenderer()->setBorderColorChecked(sf::Color::Blue);
-        button->getRenderer()->setTextColorChecked(sf::Color::Blue);
-        P->add(button, name);
-        return button;
-    }
-
-    auto return_EditBox(string text, int width, int height, int pos_x, int pos_y, Panel::Ptr P, string name)
-    {
-        auto editBox = EditBox::create();
-        editBox->setPosition(pos_x, pos_y);
-        editBox->setSize(width, height);
-        editBox->setDefaultText(text);
-        editBox->getRenderer()->setBorders(1.4);
-        editBox->getRenderer()->setBorderColorHover(sf::Color::Blue);
-        editBox->getRenderer()->setBorderColorFocused(sf::Color::Blue);
-        editBox->getRenderer()->setTextSize(15);
-        P->add(editBox, name);
-        return editBox;
-    }
-
-
-    auto return_Slider(int width, int height, int pos_x, int pos_y, Panel::Ptr P, string name)
-    {
-
-        auto slider = Slider::create();
-        slider->setPosition(pos_x, pos_y);
-        slider->setSize(width, height);
-        slider->setMinimum(0);
-        slider->setMaximum(100);
-        slider->getRenderer()->setThumbColor(tgui::Color::Blue);
-        slider->getRenderer()->setThumbColorHover(tgui::Color::Blue);
-        P->add(slider, name);
-        return slider;
-    }
-
-    auto return_Label(string text, int text_size , int pos_x, int pos_y, Panel::Ptr P, string name="", string texture_path = "")
-    {
-        auto label = Label::create(text);
-        label->setPosition(pos_x, pos_y);
-        label->setTextSize(text_size);
-        if (texture_path != "")
-        {
-            tgui::Texture t(texture_path);
-            label->getRenderer()->setTextureBackground(t);
-            t.setDefaultSmooth(true);
-        }
-        P->add(label, name);
-        return label;
-    }
-
-};
 
 class UI_Functionality :public UI_Template
 {
@@ -276,7 +34,7 @@ private:
     std::unique_ptr<Mp3Player> persistentPlayer;
     RenderWindow window;
     Player player;
-    size_t userPlaylistCount = 0;
+
     string currentPlayingSongId;
     string previousHighlightedId;
 
@@ -434,14 +192,14 @@ public:
     });
 }
 
-    void highlightSong(const string &songId)
+    void highlightSong(const string& songId)
     {
         if (previousHighlightedId == songId) return;
 
         // clear previous
         if (!previousHighlightedId.empty())
         {
-            for (auto &kv : panels)
+            for (auto& kv : panels)
             {
                 try
                 {
@@ -456,7 +214,7 @@ public:
 
         if (!songId.empty())
         {
-            for (auto &kv : panels)
+            for (auto& kv : panels)
             {
                 try
                 {
@@ -484,6 +242,10 @@ public:
             c_panel->setVisible(true);
             panels["current_playlist_panel"] = c_panel;
             gui.add(c_panel);
+        }
+        else
+        {
+			panels["current_playlist_panel"]->removeAllWidgets();
         }
 
         
@@ -519,7 +281,7 @@ public:
     void make_mid_playlist_panels(const std::string& playlistName)
     {
         // quick wrapper to open playlist as a panel similar to genre panels
-        make_mid_panels(playlistName, player.get_user_playlist(playlistName));
+        make_mid_panels_of_playlists(playlistName, player.get_user_playlist(playlistName));
 
         Panel::Ptr g_panel = panels[playlistName];
 
@@ -599,6 +361,7 @@ public:
                         
                             play_song(player.get_song(player.play_next_song_of_current_playlist()));
                             highlight_playlist_panel_song(player.get_current_playlist_song_id());
+           
                         
                     }
                     clock.restart();
@@ -683,6 +446,7 @@ public:
                             current_playlist_panel("Current Playlist", { s.id });
                             play_song(s);
                             highlight_playlist_panel_song(s.id);
+							
                         });
                     /*auto title = return_Label(s.title, 12, 240 - 5, 500+ 8, panels["search_sub_panel"]);*/
                 }
@@ -690,10 +454,11 @@ public:
 
         search->onUnfocus([=]
             {
-                search->setText("");
+               
                 tgui::Timer::scheduleCallback([=] {
                     if (panels.count("search_sub_panel")) {
                         panels["search_sub_panel"]->setVisible(false);
+                        search->setText("");
                     }
                     }, std::chrono::milliseconds(150));
             });
@@ -757,6 +522,7 @@ public:
                         play_song(song);
                     }
                     highlight_playlist_panel_song(song_id);
+                  
                 }
                 
             });
@@ -774,6 +540,7 @@ public:
                         play_song(song);
                     }
                     highlight_playlist_panel_song(song_id);
+                 
                 }
             });
 
@@ -828,7 +595,7 @@ public:
                 });
         }
 
-        // Smart Play button: plays recommended songs similar to currently playing song
+        
         if (!panels["main_mid_panel"]->get< Button >("smart_play_btn"))
         {
             auto smart = return_Button("Smart Play", 180, 40, 230, 160, panels["main_mid_panel"], "smart_play_btn");
@@ -950,7 +717,7 @@ public:
         {
             if (panels["current_playlist_panel"]->get<Label>("curr_title")->getText().toStdString() != "")
             {
-                panels["current_playlist_panel"]->get<Label>(player.get_current_playlist_song_id())->getRenderer()->setTextColor(tgui::Color::Blue);
+                panels["current_playlist_panel"]->get<Label>(id)->getRenderer()->setTextColor(tgui::Color::Blue);
                 for (auto& i : player.get_current_playlist())
                 {
                     if (i != id)
@@ -988,6 +755,7 @@ public:
         // update highlighting
         currentPlayingSongId = song.id;
         highlightSong(song.id);
+
 
         auto p_bar = panels["play_panel"]->get<tgui::Slider>("p_bar");
         p_bar->setValue(0);
@@ -1050,7 +818,6 @@ public:
             }
 
             int j = 0;
-            cout << j << endl;
 
             for (auto i : songs)
             {
@@ -1072,13 +839,10 @@ public:
                         player.clear_current_playlist();
                         player.add_song_to_current_playlist(s.id);
                         player.start_current_playlist();
-                        if (panels.count("current_playlist_panel") != 0)
-                        {
-                            panels["current_playlist_panel"]->removeAllWidgets();
-                        }
                         current_playlist_panel("Current Playlist", { s.id });
                         play_song(s);
                         highlight_playlist_panel_song(s.id);
+						
                     });
 
                 switch_back_to_main_panel(s_panel_name);
@@ -1090,6 +854,63 @@ public:
 
             panels[s_panel_name]->setVisible(true);
         
+
+    }
+
+
+    void make_mid_panels_of_playlists(string s_panel_name, vector<string> songs)
+    {
+        panels["main_mid_panel"]->setVisible(true);
+        panels["mid_panel_1"]->setVisible(false);
+
+
+
+        if (panels.count(s_panel_name) == 0)
+        {
+            auto g_panel = ScrollablePanel::create({ 1080.f,820.f });
+            g_panel->setPosition(420, 80);
+            g_panel->getRenderer()->setBackgroundColor(tgui::Color::White);
+            panels[s_panel_name] = g_panel;
+            gui.add(panels[s_panel_name]);
+        }
+
+        if (songs.empty())
+        {
+            auto label = return_Label("No Songs Found", 30, 200, 200, panels[s_panel_name]);
+            return;
+        }
+
+        int j = 0;
+
+        for (auto i : songs)
+        {
+            int col = j % 6;
+            int row = j / 6;
+
+            int pos_x = 80 + (col * 150);
+            int pos_y = 150 + (row * 150);
+
+            Song s = player.get_song(i);
+
+
+            auto button = return_Button("", 80, 80, pos_x, pos_y, panels[s_panel_name], s.id, "background/cd.png");
+
+
+            button->onPress([this, s]
+                {
+                    play_song(s);
+                    highlight_playlist_panel_song(s.id);
+                });
+
+            switch_back_to_main_panel(s_panel_name);
+            auto label = return_Label(s.title, 13, pos_x - 5, pos_y + 80, panels[s_panel_name]);
+
+            j++;
+        }
+
+
+        panels[s_panel_name]->setVisible(true);
+
 
     }
 

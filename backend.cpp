@@ -1,79 +1,32 @@
-#include<iostream>
-#include<vector>
-#include<list>
-#include<algorithm>
-#include<map>
-#include<math.h>
-#include<sstream>
-#include<fstream>
-#include<algorithm>
+#include "backend.h"
 
-using namespace std;
 
-struct Song
+
+bool Song::operator==(const Song& other) const
 {
-    string id;
-    string title;
-    string artist;
-    string genre;
-    double loudness;
-    double energy;
-    double tempo;
-    int duration;
-    double accoust;
-    double danceibility;
-
-    bool operator==(const Song& other) const
-    {
         return other.id == id;
-    }
-};
-
-struct Node
-{
-    Node* next;
-    Node* prev;
-    string song_id;
-
-    Node(string song_id)
-    {
-        this->next = NULL;
-        this->prev = NULL;
-        this->song_id = song_id;
-    }
-};
-
-inline double normalize_value(double min_v, double max_v, double v)
-{
-    return (v - min_v) / (max_v - min_v);
 }
 
-struct Vertice
+
+Node::Node(string song_id)
 {
-    int in_degree;
-    int out_degree;
-    map<string, pair<double, Vertice*>> adj_vertices;
-    int data;
-    string id;
-    double weight;
+     this->next = NULL;
+     this->prev = NULL;
+     this->song_id = song_id;
+}
 
-    Vertice(string id = "", int data = 0)
-    {
-        this->id = id;
-        this->data = data;
-        in_degree = out_degree = 0;
-    }
 
-};
 
-class Recom_Graph
+
+Vertice::Vertice(string id , int data)
 {
-private:
-    map<string, Vertice*> vertices;
+     this->id = id;
+     this->data = data;
+     in_degree = out_degree = 0;
+}
 
-public:
 
-    void add_vertice(string src, string dest, double weight)
+    void Recom_Graph::add_vertice(string src, string dest, double weight)
     {
         if (vertices.find(src) == vertices.end())
         {
@@ -98,7 +51,7 @@ public:
         }
     }
 
-    void print(string id)
+    void Recom_Graph::print(string id)
     {
         for (auto i : vertices[id]->adj_vertices)
         {
@@ -106,7 +59,7 @@ public:
         }
     }
 
-    vector<string> recommend(string id)
+    vector<string> Recom_Graph::recommend(string id)
     {
         vector < pair < string, pair<double, Vertice*>>> copy_of_map ( vertices[id]->adj_vertices.begin(),vertices[id]->adj_vertices.end());
         sort(copy_of_map.begin(), copy_of_map.end(), [](const auto& a, const auto& b) {
@@ -119,25 +72,15 @@ public:
         }
         return sorted_ids;
     }
-};
 
-struct trienode {
-    map<char, trienode*> children;
-    vector<string> song_ids;
-    bool is_end = false;
-};
 
-class tire {
-private:
-    trienode* root;
 
-public:
-    tire() {
+    trie::trie() {
         root = new trienode();
     }
 
     // Insert a song title into the trie
-    void insert(const string& song_title, const string& song_id) {
+    void trie::insert(const string& song_title, const string& song_id) {
         trienode* node = root;
         for (char c : song_title) {
             c = tolower(c); // make search case-insensitive
@@ -151,7 +94,7 @@ public:
     }
 
     // Search songs by prefix
-    vector<string> search(const string& prefix) {
+    vector<string> trie::search(const string& prefix) {
         trienode* node = root;
         for (char c : prefix) {
             c = tolower(c);
@@ -161,23 +104,16 @@ public:
         }
         return node->song_ids; // all songs with this prefix
     }
-};
 
 
-class Circular_Doubly_Linked_List
-{
-private:
-    Node* head;
-    Node* tail;
-    Node* curr;
 
-public:
-    Circular_Doubly_Linked_List()
+
+    Circular_Doubly_Linked_List::Circular_Doubly_Linked_List()
     {
         head = tail = curr = NULL;
     }
 
-    void add_song_at_tail(string song_id)
+    void Circular_Doubly_Linked_List::add_song_at_tail(string song_id)
     {
         Node* new_node = new Node(song_id);
         if (head == NULL && tail == NULL)
@@ -196,7 +132,7 @@ public:
         tail = new_node;
     }
 
-    string get_curr()
+    string Circular_Doubly_Linked_List::get_curr()
     {
         if(curr!=NULL)
         return curr->song_id;
@@ -204,7 +140,7 @@ public:
         return "";
     }
 
-    void add_song_at_curr(string song_id)
+    void Circular_Doubly_Linked_List::add_song_at_curr(string song_id)
     {
         Node* new_node = new Node(song_id);
         if (head == NULL && tail == NULL)
@@ -221,7 +157,7 @@ public:
         new_node->prev = curr;
     }
 
-    void add_song_at_head(string song_id)
+    void Circular_Doubly_Linked_List::add_song_at_head(string song_id)
     {
         Node* new_node = new Node(song_id);
         if (head == NULL && tail == NULL)
@@ -241,12 +177,12 @@ public:
     }
 
 
-    bool isEmpty()
+    bool Circular_Doubly_Linked_List::isEmpty()
     {
         return head == NULL && tail == NULL;
     }
 
-    void Clear()
+    void Circular_Doubly_Linked_List::Clear()
     {
         if (isEmpty()) return;
         if (head == NULL) return;
@@ -264,7 +200,7 @@ public:
         
     }
 
-    string start_curr()
+    string Circular_Doubly_Linked_List::start_curr()
     {
         if (head != NULL)
         {
@@ -275,7 +211,7 @@ public:
         return "";
     }
 
-    string move_curr_front()
+    string Circular_Doubly_Linked_List::move_curr_front()
     {
         if (curr == NULL)
         {
@@ -292,7 +228,7 @@ public:
 
     }
 
-    bool id_exists_or_not(string id)
+    bool Circular_Doubly_Linked_List::id_exists_or_not(string id)
     {
         if (head == NULL) return false;
         Node* temp = head;
@@ -304,7 +240,7 @@ public:
         return false;
     }
 
-    string move_curr_back()
+    string Circular_Doubly_Linked_List::move_curr_back()
     {
         if (!isEmpty())
         {
@@ -315,7 +251,7 @@ public:
         return "";
     }
 
-    vector<string> get_all_nodes()
+    vector<string> Circular_Doubly_Linked_List::get_all_nodes()
     {
         vector<string> temp1;
         Node* temp = head;
@@ -326,35 +262,24 @@ public:
         return temp1;
     }
 
-    string get_prev()
+    string Circular_Doubly_Linked_List::get_prev()
     {
         if (curr != NULL && curr->prev != NULL)
             return curr->prev->song_id;
         return "";
     }
 
-    string get_next()
+    string Circular_Doubly_Linked_List::get_next()
     {
         if (curr != NULL && curr->next != NULL)
             return curr->next->song_id;
         return "";
     }
 
-};
-
-class Player
-{
-private:
-    map<string, Song> songs;
-    map<string, vector<string>> playlists_by_genre;
-    map<string, vector<string>> playlists_by_artist;
-    map<string, vector<string>> user_playlists;
-    Circular_Doubly_Linked_List curr_playlist_manager;
-    Recom_Graph graph;
-    tire song_trie;
 
 
-    void build_trie()
+
+    void Player::build_trie()
     {
         for (auto& s : songs)
         {
@@ -364,92 +289,90 @@ private:
         }
     }
 
-    void initialize_search()
+    void Player::initialize_search()
     {
         build_trie();
     }
 
-public:
-
-    Player()
+    Player::Player()
     {
-        read_from_file("songs_set_1.csv");
+        read_from_file("final_songs_set.csv");
         read_user_playlist("user_playlists.csv");
         calculate_similarity_of_all_songs();
         build_trie();
     }
 
-    void add_song_to_current_playlist(string id)
+    void Player::add_song_to_current_playlist(string id)
     {
         if(!curr_playlist_manager.id_exists_or_not(id))
         curr_playlist_manager.add_song_at_tail(id);
     }
 
-    vector<string> get_current_playlist()
+    vector<string> Player::get_current_playlist()
     {
         return curr_playlist_manager.get_all_nodes();
 
     }
-    string start_current_playlist()
+    string Player::start_current_playlist()
     {
         return curr_playlist_manager.start_curr();
     }
-    void add_song_to_current_playlist_at_current_position(string id)
+    void Player::add_song_to_current_playlist_at_current_position(string id)
     {
         if (!curr_playlist_manager.id_exists_or_not(id))
             curr_playlist_manager.add_song_at_curr(id);
     }
 
-    bool song_exists_in_current_playlist(string id)
+    bool Player::song_exists_in_current_playlist(string id)
     {
         return curr_playlist_manager.id_exists_or_not(id);
     }
 
-    void add_current_playlist_at_once(vector<string> ids)
+    void Player::add_current_playlist_at_once(vector<string> ids)
     {
         for (auto& i : ids)
             curr_playlist_manager.add_song_at_tail(i);
     }
-    void clear_current_playlist()
+    void Player::clear_current_playlist()
     {
         curr_playlist_manager.Clear();
     }
 
-    string play_next_song_of_current_playlist()
+    string Player::play_next_song_of_current_playlist()
     {
         return curr_playlist_manager.move_curr_front();
     }
     
-    bool any_playlist_playing()
+    bool Player::any_playlist_playing()
     {
         return !curr_playlist_manager.isEmpty();
     }
 
-    string get_current_playlist_song_id()
+    string Player::get_current_playlist_song_id()
     {
         return curr_playlist_manager.get_curr();
     }
 
-    string get_next_playlist_song_id()
+    string Player::get_next_playlist_song_id()
     {
         return curr_playlist_manager.get_next();
     }
-    string get_prev_playlist_song_id()
+    string Player::get_prev_playlist_song_id()
     {
         return curr_playlist_manager.get_prev();
     }
 
-    string play_prev_song_of_current_playlist()
+    string Player::play_prev_song_of_current_playlist()
     {
         return curr_playlist_manager.move_curr_back();
     }
 
-    vector<string> recommend_song_regarding_to_current_song()
+    vector<string> Player::recommend_song_regarding_to_current_song()
     {
         return graph.recommend(curr_playlist_manager.get_curr());
     }
 
-    void read_user_playlist(string filename)
+    void Player::read_user_playlist(string filename)
     {
         ifstream file(filename);
         string wholeline;
@@ -478,7 +401,7 @@ public:
 
 
 
-    void write_user_playlist(string filename)
+    void Player::write_user_playlist(string filename)
     {
         ofstream file(filename);
         file << "Playlist Name" << "," << "Songs IDs" << "\n";
@@ -494,7 +417,7 @@ public:
         file.close();
     }
 
-    void read_from_file(string filename)
+    void Player::read_from_file(string filename)
     {
         ifstream file;
         file.open(filename);
@@ -532,7 +455,7 @@ public:
         file.close();
     }
 
-    void add_song_to_user_playlist(string playlist_name, string song_id)
+    void Player::add_song_to_user_playlist(string playlist_name, string song_id)
     {
         if (find(user_playlists[playlist_name].begin(), user_playlists[playlist_name].end(), song_id) == user_playlists[playlist_name].end())
         {
@@ -540,7 +463,7 @@ public:
         }
     }
 
-    void remove_song_from_user_playlist(string playlist_name, string song_id)
+    void Player::remove_song_from_user_playlist(string playlist_name, string song_id)
     {
         if (user_playlists.count(playlist_name) == 0)
         {
@@ -552,22 +475,22 @@ public:
         p.erase(remove(p.begin(), p.end(), song_id), p.end());
     }
 
-    Song get_song(string song_id)
+    Song Player::get_song(string song_id)
     {
         return songs[song_id];
     }
 
-    map<string, vector<string>> get_genre()
+    map<string, vector<string>> Player::get_genre()
     {
         return playlists_by_genre;
     }
 
-    map<string, vector<string>> get_artist()
+    map<string, vector<string>> Player::get_artist()
     {
         return playlists_by_artist;
     }
 
-    void print_playlist_by_genre()
+    void Player::print_playlist_by_genre()
     {
         for (auto& i : playlists_by_genre)
         {
@@ -590,7 +513,7 @@ public:
         }
     }
 
-    void print_playlist_by_artist()
+    void Player::print_playlist_by_artist()
     {
         for (auto& i : playlists_by_artist)
         {
@@ -613,7 +536,7 @@ public:
         }
     }
 
-    void print_details()
+    void Player::print_details()
     {
         for (auto& i : songs)
         {
@@ -631,7 +554,7 @@ public:
         }
     }
 
-    void calculate_similarity_of_all_songs()
+    void Player::calculate_similarity_of_all_songs()
     {
         for (auto& j : songs)
         {
@@ -646,21 +569,21 @@ public:
 
     }
 
-    void calculate_similarity_of_songs(Song A, Song B)
+    void Player::calculate_similarity_of_songs(Song A, Song B)
     {
         vector<double> vectorA;
-        vectorA.push_back(normalize_value(0, 1, A.loudness));
-        vectorA.push_back(normalize_value(0, 1, A.tempo));
-        vectorA.push_back(normalize_value(0, 1, A.energy));
-        vectorA.push_back(normalize_value(0, 1, A.accoust));
-        vectorA.push_back(normalize_value(0, 1, A.danceibility));
+        vectorA.push_back( A.loudness);
+        vectorA.push_back( A.tempo);
+        vectorA.push_back( A.energy);
+        vectorA.push_back( A.accoust);
+        vectorA.push_back( A.danceibility);
 
         vector<double> vectorB;
-        vectorB.push_back(normalize_value(0, 1, B.loudness));
-        vectorB.push_back(normalize_value(0, 1, B.tempo));
-        vectorB.push_back(normalize_value(0, 1, B.energy));
-        vectorB.push_back(normalize_value(0, 1, B.accoust));
-        vectorB.push_back(normalize_value(0, 1, B.danceibility));
+        vectorB.push_back( B.loudness);
+        vectorB.push_back( B.tempo);
+        vectorB.push_back( B.energy);
+        vectorB.push_back( B.accoust);
+        vectorB.push_back( B.danceibility);
 
         double dot_product = 0;
         double sqrA = 0;
@@ -690,12 +613,12 @@ public:
     }
 
     // New accessors for GUI usage
-    const map<string, vector<string>>& get_user_playlists() const
+    const map<string, vector<string>>& Player::get_user_playlists() const
     {
         return user_playlists;
     }
 
-    vector<string> get_user_playlist(const string& name) const
+    vector<string> Player::get_user_playlist(const string& name) const
     {
         auto it = user_playlists.find(name);
         if (it != user_playlists.end())
@@ -703,7 +626,7 @@ public:
         return {};
     }
 
-    string get_song_title(string id)
+    string Player::get_song_title(string id)
     {
         for (auto& i : songs)
         {
@@ -716,14 +639,14 @@ public:
     }
 
     // Add a convenience to create an empty playlist (no-op if exists)
-    void create_user_playlist(const string& name)
+    void Player::create_user_playlist(const string& name)
     {
         if (user_playlists.find(name) == user_playlists.end())
             user_playlists[name] = {};
     }
 
     // Delete playlist from map and persist change to file
-    void delete_user_playlist(const string& name)
+    void Player::delete_user_playlist(const string& name)
     {
         // erase from in-memory map
         auto erased = user_playlists.erase(name);
@@ -732,13 +655,10 @@ public:
         write_user_playlist("user_playlists.csv");
     }
 
-    vector<string> search_songs_by_prefix(const string& prefix) {
+    vector<string> Player::search_songs_by_prefix(const string& prefix) {
         vector<string> ids = song_trie.search(prefix);
         return ids;
     }
-
-
-};
 
 
 
