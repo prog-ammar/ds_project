@@ -653,7 +653,7 @@ Vertice::Vertice(string id , int data)
         auto erased = user_playlists.erase(name);
 
         // rewrite backing file to reflect change regardless of whether key existed
-        write_user_playlist("user_playlists.csv");
+        write_user_playlist("files/user_playlists.csv");
     }
 
     vector<string> Player::search_songs_by_prefix(const string& prefix) {
