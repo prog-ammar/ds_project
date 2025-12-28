@@ -129,13 +129,20 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="backup.cpp" />
+    <ClCompile Include="backend.cpp" />
     <ClCompile Include="cpp gui.cpp" />
     <ClCompile Include="gui.cpp" />
+    <ClCompile Include="Mp3_com.cpp" />
+    <ClCompile Include="UI_Template.h" />
+    <ClCompile Include="UI_Template.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="songs_set.csv" />
     <None Include="songs_set_1.csv" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="backend.h" />
+    <ClInclude Include="Mp3_com.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

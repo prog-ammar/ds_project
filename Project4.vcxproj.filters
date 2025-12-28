@@ -15,7 +15,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="backup.cpp">
+    <ClCompile Include="backend.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="gui.cpp">
@@ -24,11 +24,28 @@
     <ClCompile Include="cpp gui.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="UI_Template.h">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Mp3_com.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="UI_Template.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="songs_set.csv" />
     <None Include="songs_set_1.csv">
       <Filter>Source Files</Filter>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Mp3_com.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="backend.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
