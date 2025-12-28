@@ -1,5 +1,7 @@
 #include "UI_Template.h"
 
+using namespace std;
+using namespace sf;
 
 tgui::Button::Ptr UI_Template::return_Button(string cap, int width, int height, int pos_x, int pos_y, tgui::Panel::Ptr P, string name, string texture_path)
 {

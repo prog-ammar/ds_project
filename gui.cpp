@@ -181,7 +181,7 @@ public:
             }
 
             // persist playlists to file
-            player.write_user_playlist("user_playlists.csv");
+            player.write_user_playlist("files/user_playlists.csv");
 
             // hide editor
             panelPtr->setVisible(false);
@@ -296,7 +296,7 @@ public:
 
             // 2. Clear the logic
             player.delete_user_playlist(playlistName);
-            player.write_user_playlist("user_playlists.csv");
+            player.write_user_playlist("files/user_playlists.csv");
             player.clear_current_playlist();
 
             // 3. UI Cleanup: Clear the "Now Playing" text so the user sees it's gone

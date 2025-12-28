@@ -643,7 +643,11 @@ Vertice::Vertice(string id , int data)
     void Player::create_user_playlist(const string& name)
     {
         if (user_playlists.find(name) == user_playlists.end())
+        {
             user_playlists[name] = {};
+			return;
+        }
+            
     }
 
     // Delete playlist from map and persist change to file
