@@ -7,6 +7,8 @@ This is the Semester project of Our DSA Project. Its An Music Player that handle
 3. libmpg3 for MP3 playback
 4. An self made UI_template.h to make things easier
 
+![Image](background/ss.png)
+
 ## Concepts Used
 1. Cosine Similarity to Calculate similarity between two songs
 2. Graph to link similar songs
