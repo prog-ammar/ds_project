@@ -39,3 +39,5 @@ when user add an playlist its writed to files/user_playlists.csv
 ### 5. How Smart Play Works
 Similarity of each song with every other song is calculated . if similarity  > 0.5 put that song in graph. when user clicks on smart play button the program checks the current song playing and goes to graph and return all the songs adjacent to current song return in vector and song with most similairty is added to playlist and when user clicks again the 2nd most similar song is suggested.
 
+## How to Setup
+Clone this repo and inside add an songs folder that contains songs mp3 with name as an id to add more songs you just have change your final_songs_set.csv and add those songs intho songs/ folder
