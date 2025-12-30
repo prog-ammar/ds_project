@@ -7,14 +7,21 @@ This is the Semester project of Our DSA Project. Its An Music Player that handle
 3. libmpg3 for MP3 playback
 4. An self made UI_template.h to make things easier
 
+## Concepts Used
+1. Cosine Similarity to Calculate similarity between two songs
+2. Graph to link similar songs
+3. Trie or Prefix Tree for Searching Effceintly
+4. Maps to Access Every Song in O(1) complexity
+5. An Doubly Linked List as an playlist that has each node as an song 
+
 ## WorkFlow
 
 ### 1. When Program is Started
 files/final_songs_set.csv contains metadata about all the songs that is loaded when the program is started from which these things happen
-     1.An map that store each song id as an key and struct to that song as an value.
-     2.An Recommendation Graph is made by Calculating similarity.
-     3.An Playlist According to each genre
-     4.An Playlist According to each artist
+1. An map that store each song id as an key and struct to that song as an value.
+2. An Recommendation Graph is made by Calculating similarity.
+3. An Playlist According to each genre
+4. An Playlist According to each artist
      
 files/user_playlists.csv contains playlists that are made by user when program is started this file is also loaded.
 
@@ -30,10 +37,3 @@ when user add an playlist its writed to files/user_playlists.csv
 ### 5. How Smart Play Works
 Similarity of each song with every other song is calculated . if similarity  > 0.5 put that song in graph. when user clicks on smart play button the program checks the current song playing and goes to graph and return all the songs adjacent to current song return in vector and song with most similairty is added to playlist and when user clicks again the 2nd most similar song is suggested.
 
-
-## Concepts Used
-1. Cosine Similarity to Calculate similarity between two songs
-2. Graph to link similar songs
-3. Trie or Prefix Tree for Searching Effceintly
-4. Maps to Access Every Song in O(1) complexity
-5. An Doubly Linked List as an playlist that has each node as an song 
